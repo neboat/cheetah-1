@@ -22,6 +22,10 @@ struct __cilkrts_worker {
 
     // 4 byte hole on 64 bit systems
 
+#if !USE_FIBER_HEADER
+    struct __cilkrts_stack_frame *current_frame;
+#endif
+
     // Current hyperobject table
     struct local_hyper_table *hyper_table;
 

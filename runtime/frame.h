@@ -22,6 +22,7 @@ struct __cilkrts_stack_frame {
     // layout of this structure.
     uint32_t magic;
 
+#if USE_FIBER_HEADER
     // Pointer to the fiber header of the worker currently executing with this
     // stack frame.
     //
@@ -29,6 +30,9 @@ struct __cilkrts_stack_frame {
     // accessing TLS is expensive on some systems, such as macOS.  It is
     // therefore faster to use this variable when possible.
     struct fiber_header *fh;
+#else
+    struct __cilkrts_worker *w;
+#endif
 
     // call_parent points to the __cilkrts_stack_frame of the closest ancestor
     // spawning function, including spawn helpers, of this frame.  For each

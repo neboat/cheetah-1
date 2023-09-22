@@ -62,7 +62,11 @@ get_worker_from_stack(const __cilkrts_stack_frame *sf) {
     // which can be slow on some systems.  This method gets the current worker
     // from the given __cilkrts_stack_frame, which is more efficient than a TLS
     // access on those systems.
+#if USE_FIBER_HEADER
     return sf->fh->worker;
+#else
+    return sf->w;
+#endif
 }
 
 CHEETAH_INTERNAL

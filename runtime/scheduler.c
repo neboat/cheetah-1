@@ -122,8 +122,8 @@ static void decrement_exception_pointer(__cilkrts_worker *const w,
 static void reset_exception_pointer(__cilkrts_worker *const w, worker_id self,
                                     Closure *cl) {
     Closure_assert_ownership(w, self, cl);
-    CILK_ASSERT(w, (cl->frame == NULL) ||
-                       (get_header_from_fiber(cl->fiber)->worker == w));
+    /* CILK_ASSERT(w, (cl->frame == NULL) || */
+    /*                    (get_header_from_fiber(cl->fiber)->worker == w)); */
     atomic_store_explicit(&w->exc,
                           atomic_load_explicit(&w->head, memory_order_relaxed),
                           memory_order_release);
@@ -145,8 +145,10 @@ static void signal_immediate_exception_to_all(__cilkrts_worker *const w) {
 
 static void setup_for_execution(__cilkrts_worker *w, Closure *t) {
     cilkrts_alert(SCHED, w, "(setup_for_execution) closure %p", (void *)t);
+#if USE_FIBER_HEADER
     struct fiber_header *fh = get_header_from_fiber(t->fiber);
     fh->worker = w;
+#endif
     Closure_set_status(w, t, CLOSURE_RUNNING);
 
     __cilkrts_stack_frame **init = w->l->shadow_stack;
@@ -157,9 +159,14 @@ static void setup_for_execution(__cilkrts_worker *w, Closure *t) {
     /* push the first frame on the current_stack_frame */
     __cilkrts_stack_frame *sf = t->frame;
 
+#if USE_FIBER_HEADER
     fh->current_stack_frame = sf;
     sf->fh = fh;
     __cilkrts_current_fh = fh;
+#else
+    sf->w = w;
+    w->current_frame = sf;
+#endif
 }
 
 // ANGE: When this is called, either a) a worker is about to pass a sync (though
@@ -199,11 +206,16 @@ static void setup_for_sync(__cilkrts_worker *w, worker_id self, Closure *t) {
     //         (void *)t->fiber);
     __cilkrts_set_synced(t->frame);
 
+#if USE_FIBER_HEADER
     struct fiber_header *fh = get_header_from_fiber(t->fiber);
     __cilkrts_current_fh = fh;
     t->frame->fh = fh;
     fh->worker = w;
     CILK_ASSERT_POINTER_EQUAL(w, fh->current_stack_frame, t->frame);
+#else
+    t->frame->w = w;
+    w->current_frame = t->frame;
+#endif
 
     SP(t->frame) = (void *)t->orig_rsp;
     if (USE_EXTENSION) {
@@ -449,9 +461,13 @@ static Closure *Closure_return(__cilkrts_worker *const w, worker_id self,
     } else {
         // We are leftmost, pass stack/fiber up to parent.
         // Thus, no stack/fiber to free.
+#if USE_FIBER_HEADER
         CILK_ASSERT_POINTER_EQUAL(
             w, parent->frame,
             get_header_from_fiber(child->fiber)->current_stack_frame);
+#else
+        CILK_ASSERT_POINTER_EQUAL(w, parent->frame, w->current_frame);
+#endif
         parent->fiber_child = child->fiber;
         if (USE_EXTENSION) {
             parent->ext_fiber_child = child->ext_fiber;
@@ -1342,7 +1358,7 @@ static void do_what_it_says(ReadyDeque *deques, __cilkrts_worker *w,
                 w = w_save;
                 l = w->l;
                 self = w->self;
-                __cilkrts_current_fh = NULL;
+                /* __cilkrts_current_fh = NULL; */
                 CILK_ASSERT_POINTER_EQUAL(w, w, __cilkrts_get_tls_worker());
                 sanitizer_finish_switch_fiber();
                 worker_change_state(w, WORKER_SCHED);
