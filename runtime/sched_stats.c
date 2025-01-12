@@ -1,16 +1,15 @@
+#include "global.h"
+#include "sched_stats.h"
 #include <inttypes.h>
+
+#if SCHED_STATS
+#include "cilk-internal.h"
+#include "debug.h"
+#include "local.h"
+#include "types.h"
 #include <stdio.h>
 #include <time.h>
 
-#include "cilk-internal.h"
-#include "debug.h"
-#include "global.h"
-#include "internal-malloc-impl.h"
-#include "local.h"
-#include "sched_stats.h"
-#include "types.h"
-
-#if SCHED_STATS
 static const char *enum_to_str(enum timing_type t) {
     switch (t) {
     case INTERVAL_WORK:

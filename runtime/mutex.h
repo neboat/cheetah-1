@@ -10,8 +10,6 @@ typedef union cilk_mutex cilk_mutex;
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "rts-config.h"
-
 #ifndef __APPLE__
 #define USE_SPINLOCK 1
 #endif
@@ -64,9 +62,8 @@ static inline int cilk_mutex_try(cilk_mutex *lock) {
 #if USE_SPINLOCK
     if (pthread_spin_trylock(&(lock->posix)) == 0) {
         return 1;
-    } else {
-        return 0;
     }
+    return 0;
 #else
     if (pthread_mutex_trylock(&(lock->posix)) == 0) {
         return 1;

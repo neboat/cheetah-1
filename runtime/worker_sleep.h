@@ -1,16 +1,16 @@
 #ifndef _WORKER_SLEEP_H
 #define _WORKER_SLEEP_H
 
-#include <stdatomic.h>
-#include <stdint.h>
-#include <limits.h>
-#include <time.h>
-
+// #include <stdatomic.h>
 #include "cilk-internal.h"
 #include "global.h"
+#include "local.h"
 #include "rts-config.h"
 #include "sched_stats.h"
 #include "worker_coord.h"
+#include <limits.h>
+#include <stdint.h>
+#include <time.h>
 
 #if defined(__APPLE__) && defined(__aarch64__)
 #define APPLE_ARM64
@@ -172,11 +172,10 @@ static bool try_to_disengage_thief(global_state *g, worker_id self,
         // Release the lock on the index structure.
         cilk_mutex_unlock(&g->index_lock);
         return true;
-    } else {
-        // Release the lock on the index structure.
-        cilk_mutex_unlock(&g->index_lock);
-        return false;
     }
+    // Release the lock on the index structure.
+    cilk_mutex_unlock(&g->index_lock);
+    return false;
 }
 #endif // ENABLE_THIEF_SLEEP
 
@@ -192,8 +191,9 @@ get_worker_counts(uint64_t disengaged_sentinel, unsigned int nworkers) {
     int32_t active =
         (int32_t)nworkers - (int32_t)disengaged - (int32_t)sentinel;
 
-    worker_counts counts = {
-        .active = active, .sentinels = sentinel, .disengaged = disengaged};
+    worker_counts counts = {.active = active,
+                            .sentinels = (int32_t)sentinel,
+                            .disengaged = (int32_t)disengaged};
     return counts;
 }
 
@@ -557,12 +557,11 @@ static unsigned int go_to_sleep_maybe(global_state *const rts, worker_id self,
             rts, self, nworkers, w, fails, sample_threshold,
             inefficient_history, efficient_history, sentinel_count_history,
             sentinel_count_history_tail, recent_sentinel_count);
-    } else {
-        return handle_failed_steal_attempts(
-            rts, self, nworkers, NAP_THRESHOLD, w, fails, sample_threshold,
-            inefficient_history, efficient_history, sentinel_count_history,
-            sentinel_count_history_tail, recent_sentinel_count);
     }
+    return handle_failed_steal_attempts(
+        rts, self, nworkers, NAP_THRESHOLD, w, fails, sample_threshold,
+        inefficient_history, efficient_history, sentinel_count_history,
+        sentinel_count_history_tail, recent_sentinel_count);
 }
 
 #if ENABLE_THIEF_SLEEP

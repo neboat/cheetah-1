@@ -1,26 +1,9 @@
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
-#include <stdatomic.h>
 #endif
-#include <sched.h>
-#include <stdint.h>
-#include <stdio.h>
-
-#include <pthread.h>
-#ifdef DEBUG
-#include <stdio.h>
-#endif
-#include <stdlib.h>
-#include <string.h> /* strerror */
-#ifdef __linux__
-#include <sys/sysinfo.h>
-#endif
-#ifdef __FreeBSD__
-#include <pthread_np.h>
-#endif
-#include <unistd.h>
 
 #include "cilk-internal.h"
+#include "closure.h"
 #include "debug.h"
 #include "fiber.h"
 #include "global.h"
@@ -30,6 +13,25 @@
 #include "sched_stats.h"
 #include "scheduler.h"
 #include "worker_coord.h"
+#include <pthread.h>
+#ifdef __FreeBSD__
+#include <pthread_np.h>
+#endif
+#include <sched.h>
+#include <stdatomic.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h> /* strerror */
+#include <unistd.h>
+
+#ifdef __linux__
+#include <sys/sysinfo.h>
+#endif
+
+#ifdef DEBUG
+#include <stdio.h>
+#endif
 
 #if defined __FreeBSD__ && __FreeBSD__ < 13
 typedef cpuset_t cpu_set_t;

@@ -1,5 +1,4 @@
 #include "cilk-internal.h"
-#include "global.h"
 #include "hyperobject_base.h"
 #include "local-hypertable.h"
 #include "local-reducer-api.h"

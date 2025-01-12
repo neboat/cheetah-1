@@ -1,7 +1,3 @@
-#include <inttypes.h> /* PRIu32 */
-#include <stdio.h>
-#include <stdlib.h>
-
 #include "cilk-internal.h"
 #include "debug.h"
 #include "fiber-header.h"
@@ -9,6 +5,9 @@
 #include "global.h"
 #include "local.h"
 #include "mutex.h"
+#include <inttypes.h> /* PRIu32 */
+#include <stdio.h>
+#include <stdlib.h>
 
 // When the pool becomes full (empty), free (allocate) this fraction
 // of the pool back to (from) parent / the OS.

@@ -2,14 +2,11 @@
 #define _CLOSURE_H
 
 // Includes
-#include <stdatomic.h>
+
 #include "debug.h"
-
 #include "cilk-internal.h"
-#include "fiber.h"
-#include "mutex.h"
-
 #include "closure-type.h"
+#include <stdatomic.h>
 
 static inline const char *Closure_status_to_str(enum ClosureStatus status) {
     switch (status) {
@@ -172,7 +169,7 @@ static inline Closure *Closure_create(__cilkrts_worker *const w,
                                       __cilkrts_stack_frame *sf) {
     /* cilk_internal_malloc returns sufficiently aligned memory */
     Closure *new_closure =
-        cilk_internal_malloc(w, sizeof(*new_closure), IM_CLOSURE);
+        (Closure *)cilk_internal_malloc(w, sizeof(*new_closure), IM_CLOSURE);
     CILK_ASSERT(new_closure != NULL);
 
     Closure_init(new_closure, sf);

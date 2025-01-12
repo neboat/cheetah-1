@@ -1,16 +1,13 @@
-#include <stdatomic.h>
-#include <stdio.h>
-#include <unwind.h>
-
 #include "debug.h"
-
 #include "cilk-internal.h"
 #include "cilk2c.h"
 #include "fiber.h"
 #include "global.h"
-#include "readydeque.h"
 #include "rts-config.h"
 #include "scheduler.h"
+#include <stdatomic.h>
+#include <stdio.h>
+#include <unwind.h>
 
 CHEETAH_INTERNAL
 struct closure_exception exception_reducer = {.exn = NULL};

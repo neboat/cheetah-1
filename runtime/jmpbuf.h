@@ -1,9 +1,8 @@
 #ifndef _JMPBUF_H
 #define _JMPBUF_H
 
-#include <stddef.h>
-
 #include "debug.h"
+#include <stddef.h>
 
 #define JMPBUF_SIZE 5
 typedef void *jmpbuf[JMPBUF_SIZE];

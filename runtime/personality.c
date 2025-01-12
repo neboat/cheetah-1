@@ -1,12 +1,3 @@
-#include <signal.h>
-#include <stdatomic.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <string.h>
-#include <unwind.h>
-
-#include <cilk/cilk_api.h>
-
 #include "cilk-internal.h"
 #include "cilk2c.h"
 #include "closure-type.h"
@@ -20,6 +11,12 @@
 #include "readydeque.h"
 #include "types.h"
 #include "worker.h"
+#include <cilk/cilk_api.h>
+#include <stdatomic.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <string.h>
+#include <unwind.h>
 
 typedef _Unwind_Reason_Code (*__personality_routine)(
     int version, _Unwind_Action actions, uint64_t exception_class,
@@ -219,10 +216,10 @@ _Unwind_Reason_Code __cilk_personality_internal(
         // don't do anything out of the ordinary during search phase.
         return std_lib_personality(version, actions, exception_class, ue_header,
                                    context);
-    } else if (actions & _UA_CLEANUP_PHASE) {
-        cilkrts_alert(EXCEPT,
-                      "cilk_personality called %p  CFA %p\n", (void *)sf,
-                      (void *)get_cfa(context));
+    }
+    if (actions & _UA_CLEANUP_PHASE) {
+        cilkrts_alert(EXCEPT, "cilk_personality called %p  CFA %p\n",
+                      (void *)sf, (void *)get_cfa(context));
 
         if (sf->flags & CILK_FRAME_UNSYNCHED) {
             sync_in_personality(w, sf, ue_header);
@@ -277,8 +274,8 @@ _Unwind_Reason_Code __cilk_personality_internal(
         // on the frame after running cleanups, we want to skip doing a
         // __cilkrts_leave_frame at the end, because the cleanup will have
         // already performed a __cilkrts_pause_frame.
-        bool isSpawnHelper = (sf->flags & CILK_FRAME_DETACHED);
-        bool isLastFrame = (sf->flags & CILK_FRAME_LAST);
+        bool is_spawn_helper = (sf->flags & CILK_FRAME_DETACHED);
+        bool is_last_frame = (sf->flags & CILK_FRAME_LAST);
 
         // Run std_lib_personality in cleanup phase on the reduced exception
         // object
@@ -287,10 +284,10 @@ _Unwind_Reason_Code __cilk_personality_internal(
 
         // If we need to continue unwinding the stack, call
         // __cilkrts_leave_frame here.
-        if ((cleanup_res == _URC_CONTINUE_UNWIND) && !isSpawnHelper &&
+        if ((cleanup_res == _URC_CONTINUE_UNWIND) && !is_spawn_helper &&
             !skip_leaveframe) {
 
-            if (isLastFrame) {
+            if (is_last_frame) {
                 // If we're leaving the last Cilk stack frame, we will be
                 // longjmping back to the original program call stack.
                 if (exn_r != NULL) {
@@ -314,7 +311,6 @@ _Unwind_Reason_Code __cilk_personality_internal(
         }
 
         return cleanup_res;
-    } else {
-        return _URC_FATAL_PHASE1_ERROR;
     }
+    return _URC_FATAL_PHASE1_ERROR;
 }

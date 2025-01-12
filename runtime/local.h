@@ -1,9 +1,10 @@
 #ifndef _CILK_LOCAL_H
 #define _CILK_LOCAL_H
 
-#include <stdbool.h>
-
+#include "fiber.h"
 #include "internal-malloc-impl.h" /* for cilk_im_desc */
+#include "jmpbuf.h"
+#include <stdbool.h>
 
 struct local_state {
     struct __cilkrts_stack_frame **shadow_stack;

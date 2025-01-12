@@ -4,9 +4,14 @@
 // Routines for coordinating workers, specifically, putting workers to sleep and
 // waking workers when execution enters and leaves cilkified regions.
 
+// #include <stdatomic.h>
+// #include "global.h"
+#include "global.h"
+#include "rts-config.h"
+#include <limits.h>
 #include <stdatomic.h>
 #include <stdint.h>
-#include <limits.h>
+#include <stdio.h>
 
 #ifdef __linux__
 #include <errno.h>
@@ -14,8 +19,6 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 #endif
-
-#include "global.h"
 
 #define USER_USE_FUTEX 1
 #ifdef __linux__

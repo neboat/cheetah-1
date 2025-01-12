@@ -4,11 +4,10 @@
 #include "cilk-internal.h"
 #include "debug.h"
 #include "fiber-header.h"
-#include "frame.h"
+#include "jmpbuf.h"
 #include "mutex.h"
 #include "rts-config.h"
 #include "types.h"
-
 #include <stdint.h>
 
 //===============================================================

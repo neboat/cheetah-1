@@ -5,19 +5,16 @@
 extern "C" {
 #endif
 
-#include <stdbool.h>
-#include <stdint.h>
-
-#include <cilk/cilk_api.h>
-
 #include "debug.h"
 #include "fiber-header.h"
 #include "frame.h"
-#include "internal-malloc.h"
 #include "rts-config.h"
 #include "sched_stats.h"
 #include "types.h"
 #include "worker.h"
+#include <cilk/cilk_api.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 #if defined __i386__ || defined __x86_64__
 #ifdef __SSE__

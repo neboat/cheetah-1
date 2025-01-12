@@ -1,11 +1,10 @@
 #ifndef _INTERAL_MALLOC_H
 #define _INTERAL_MALLOC_H
 
-#include <stdint.h>
-#include <stdlib.h>
-
 #include "rts-config.h"
 #include "types.h"
+#include <stdint.h>
+#include <stdlib.h>
 
 CHEETAH_INTERNAL extern int cheetah_page_shift;
 

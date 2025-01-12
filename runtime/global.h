@@ -1,12 +1,6 @@
 #ifndef _CILK_GLOBAL_H
 #define _CILK_GLOBAL_H
 
-#include <pthread.h>
-#include <stdbool.h>
-#include <stdint.h>
-
-#include <stdatomic.h> /* must follow stdbool.h */
-
 #include "debug.h"
 #include "fiber.h"
 #include "internal-malloc-impl.h"
@@ -16,6 +10,10 @@
 #include "sched_stats.h"
 #include "types.h"
 #include "worker.h"
+#include <pthread.h>
+#include <stdatomic.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 extern unsigned __cilkrts_nproc;
 

@@ -2,7 +2,6 @@
 #define _CILK_FRAME_H
 
 #include "rts-config.h"
-
 #include "jmpbuf.h"
 #include <stdint.h>
 

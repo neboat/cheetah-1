@@ -1,8 +1,13 @@
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
-#include "rts-config.h"
 #endif
 
+#include "rts-config.h"
+#include "debug.h"
+#include "global.h"
+#include "local.h"
+#include "readydeque.h"
+#include "types.h"
 #include <pthread.h>
 #ifdef __FreeBSD__
 #include <pthread_np.h>
@@ -11,11 +16,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h> /* _SC_NPROCESSORS_ONLN */
-
-#include "debug.h"
-#include "global.h"
-#include "init.h"
-#include "readydeque.h"
 
 #if defined __FreeBSD__ && __FreeBSD__ < 13
 typedef cpuset_t cpu_set_t;

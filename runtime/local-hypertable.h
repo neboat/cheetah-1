@@ -1,12 +1,14 @@
 #ifndef _LOCAL_HYPERTABLE_H
 #define _LOCAL_HYPERTABLE_H
 
+#include "hyperobject_base.h"
+#include "rts-config.h"
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "hyperobject_base.h"
-#include "rts-config.h"
-#include "types.h"
+#ifdef __cplusplus
+#define restrict __restrict__
+#endif
 
 typedef uint32_t index_t;
 

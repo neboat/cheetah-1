@@ -2,7 +2,6 @@
 #define _LOCAL_REDUCER_API_H
 
 #include "cilk-internal.h"
-#include "global.h"
 #include "local-hypertable.h"
 
 static inline struct local_hyper_table *

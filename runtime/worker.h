@@ -2,6 +2,7 @@
 #define _CILK_WORKER_H
 
 #include "rts-config.h"
+#include "types.h"
 
 struct __cilkrts_stack_frame;
 struct local_state;

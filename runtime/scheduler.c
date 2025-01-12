@@ -1,19 +1,4 @@
 #include "debug.h"
-#include <assert.h>
-#include <pthread.h>
-#include <stdatomic.h>
-#include <stdint.h>
-#ifdef __linux__
-#include <sched.h>
-#endif
-#include <stdio.h>
-#include <string.h>
-#include <unwind.h>
-
-#ifdef __APPLE__
-#include <mach/mach_time.h>
-#endif
-
 #include "cilk-internal.h"
 #include "cilk2c.h"
 #include "closure.h"
@@ -28,6 +13,21 @@
 #include "scheduler.h"
 #include "worker_coord.h"
 #include "worker_sleep.h"
+#include <assert.h>
+#include <pthread.h>
+#include <stdatomic.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#include <unwind.h>
+
+#ifdef __linux__
+#include <sched.h>
+#endif
+
+#ifdef __APPLE__
+#include <mach/mach_time.h>
+#endif
 
 // ==============================================
 // Global and thread-local variables.
