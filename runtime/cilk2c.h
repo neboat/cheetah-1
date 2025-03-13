@@ -25,6 +25,7 @@ CHEETAH_INTERNAL void clear_exception_reducer(__cilkrts_worker *w,
                                               struct closure_exception *exn_r);
 
 // Returns 1 if the current exection is running on Cilk workers, 0 otherwise.
+__attribute__((nothrow))
 CHEETAH_API int __cilkrts_running_on_workers(void);
 
 // Check if the runtime is storing an exception we need to handle later, and

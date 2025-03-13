@@ -28,8 +28,10 @@ CHEETAH_INTERNAL struct cilkrts_callbacks cilkrts_callbacks = {
 
 // Test if the Cilk runtime has been initialized.  This method is intended to
 // help initialization of libraries that depend on the OpenCilk runtime.
+__attribute__((nothrow))
 int __cilkrts_is_initialized(void) { return NULL != default_cilkrts; }
 
+__attribute__((nothrow))
 int __cilkrts_running_on_workers(void) {
     return !__cilkrts_need_to_cilkify;
 }
@@ -42,6 +44,7 @@ int __cilkrts_running_on_workers(void) {
 
 // Register a callback to run at Cilk-runtime initialization.  Returns 0 on
 // successful registration, nonzero otherwise.
+__attribute__((nothrow))
 int __cilkrts_atinit(void (*callback)(void)) {
     if (cilkrts_callbacks.last_init >= MAX_CALLBACKS ||
         cilkrts_callbacks.after_init)
@@ -53,6 +56,7 @@ int __cilkrts_atinit(void (*callback)(void)) {
 
 // Register a callback to run at Cilk-runtime exit.  Returns 0 on successful
 // registration, nonzero otherwise.
+__attribute__((nothrow))
 int __cilkrts_atexit(void (*callback)(void)) {
     if (cilkrts_callbacks.last_exit >= MAX_CALLBACKS)
         return -1;

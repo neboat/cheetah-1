@@ -10,11 +10,15 @@ extern "C" {
 #define __CILKRTS_NOTHROW
 #endif
 
+__attribute__((nothrow))
 int __cilkrts_is_initialized(void);
+__attribute__((nothrow))
 int __cilkrts_atinit(void (*callback)(void));
+__attribute__((nothrow))
 int __cilkrts_atexit(void (*callback)(void));
 unsigned __cilkrts_get_nworkers(void);
 unsigned __cilkrts_get_worker_number(void) __attribute__((deprecated));
+__attribute__((nothrow))
 int __cilkrts_running_on_workers(void);
 
 #include <inttypes.h>
