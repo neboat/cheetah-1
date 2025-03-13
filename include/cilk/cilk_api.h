@@ -36,9 +36,11 @@ typedef void (*__cilk_reduce_fn)(void *, void *);
 /* void *__cilkrts_reducer_lookup(void *key, size_t size, __cilk_identity_fn id, */
 /*                                __cilk_reduce_fn reduce); */
 void *__cilkrts_reducer_lookup(void *key, size_t size, void *id, void *reduce);
+__attribute__((nothrow))
 void __cilkrts_reducer_register(void *key, size_t size, __cilk_identity_fn id,
                                 __cilk_reduce_fn reduce)
     __attribute__((deprecated));
+__attribute__((nothrow))
 void __cilkrts_reducer_unregister(void *key) __attribute__((deprecated));
 
 #ifdef __cplusplus

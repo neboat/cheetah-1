@@ -8,6 +8,7 @@
 #include <unwind.h>
 
 #include "cilk-internal.h"
+#include "compiler-api.h"
 #include "cilk2c.h"
 #include "debug.h"
 #include "fiber.h"
@@ -358,7 +359,6 @@ __cilkrts_pause_frame(__cilkrts_stack_frame *sf, __cilkrts_stack_frame *parent,
     }
 }
 
-extern "C"
 __attribute__((always_inline)) void
 __cilk_helper_epilogue_exn(__cilkrts_stack_frame *sf,
                            __cilkrts_stack_frame *parent, char *exn,
@@ -380,7 +380,7 @@ __internal_preserve_stack_frame_type_helper(void) {
 ///
 ///     grainsize = min(2048, ceil(n / (8 * nworkers)))
 #define __cilkrts_grainsize_fn_impl(NAME, INT_T)                               \
-    __attribute__((always_inline)) INT_T NAME(INT_T n) {                       \
+    __attribute__((always_inline,nothrow)) INT_T NAME(INT_T n) {               \
         INT_T small_loop_grainsize = n / (8 * __cilkrts_nproc);                \
         if (small_loop_grainsize <= 1)                                         \
             return 1;                                                          \
@@ -392,7 +392,7 @@ __internal_preserve_stack_frame_type_helper(void) {
 #define __cilkrts_grainsize_fn(SZ)                                             \
     __cilkrts_grainsize_fn_impl(__cilkrts_cilk_for_grainsize_##SZ, uint##SZ##_t)
 
-__attribute__((always_inline)) uint8_t
+__attribute__((always_inline,nothrow)) uint8_t
 __cilkrts_cilk_for_grainsize_8(uint8_t n) {
     uint8_t small_loop_grainsize = n / (8 * __cilkrts_nproc);
     if (small_loop_grainsize <= 1)

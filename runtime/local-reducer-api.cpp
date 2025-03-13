@@ -3,11 +3,13 @@
 #include "hyperobject_base.h"
 #include "local-hypertable.h"
 #include "local-reducer-api.h"
+#include "compiler-api.h"
 #include "rts-config.h"
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 
+__attribute__((nothrow))
 void __cilkrts_reducer_register(void *key, size_t size,
 				__cilk_identity_fn id,
 				__cilk_reduce_fn reduce) {
@@ -23,20 +25,21 @@ void __cilkrts_reducer_register(void *key, size_t size,
     (void)success;
 }
 
-extern "C"
+__attribute__((nothrow))
 void __cilkrts_reducer_register_32(void *key, uint32_t size,
                                    __cilk_identity_fn id,
                                    __cilk_reduce_fn reduce) {
     __cilkrts_reducer_register(key, size, id, reduce);
 }
 
-extern "C"
+__attribute__((nothrow))
 void __cilkrts_reducer_register_64(void *key, uint64_t size,
                                    __cilk_identity_fn id,
                                    __cilk_reduce_fn reduce) {
     __cilkrts_reducer_register(key, size, id, reduce);
 }
 
+__attribute__((nothrow))
 void __cilkrts_reducer_unregister(void *key) {
     struct hyper_table *table = get_hyper_table();
     bool success = remove_hyperobject(table, (uintptr_t)key);

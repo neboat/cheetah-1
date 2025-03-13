@@ -8,6 +8,7 @@ void __cilkrts_internal_invoke_cilkified_root(__cilkrts_stack_frame *sf);
 void __cilkrts_internal_exit_cilkified_root(global_state *g, __cilkrts_stack_frame *sf);
 
 // Used by Cilksan to set nworkers to 1 and force reduction
+extern "C"
 void __cilkrts_internal_set_nworkers(unsigned int nworkers);
 
 #endif /* _CILK_INIT_H */
