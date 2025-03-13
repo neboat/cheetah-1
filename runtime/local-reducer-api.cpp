@@ -23,12 +23,14 @@ void __cilkrts_reducer_register(void *key, size_t size,
     (void)success;
 }
 
+extern "C"
 void __cilkrts_reducer_register_32(void *key, uint32_t size,
                                    __cilk_identity_fn id,
                                    __cilk_reduce_fn reduce) {
     __cilkrts_reducer_register(key, size, id, reduce);
 }
 
+extern "C"
 void __cilkrts_reducer_register_64(void *key, uint64_t size,
                                    __cilk_identity_fn id,
                                    __cilk_reduce_fn reduce) {

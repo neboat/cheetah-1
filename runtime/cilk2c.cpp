@@ -109,6 +109,7 @@ void __cilkrts_check_exception_resume(__cilkrts_stack_frame *sf) {
 // of each landingpad in a spawning function.  Ensures that the stack pointer
 // points at the fiber and call-stack frame containing sf before any catch
 // handlers in that frame execute.
+extern "C"
 void __cilkrts_cleanup_fiber(__cilkrts_stack_frame *sf, int32_t sel) {
     (void)sel; // currently unused
 

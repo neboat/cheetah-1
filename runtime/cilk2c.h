@@ -70,7 +70,7 @@ CHEETAH_API void __cilkrts_sync(__cilkrts_stack_frame *sf);
 
 // Implements a cilk_sync when the cilk_sync might produce an exception that
 // needs to be handled.
-CHEETAH_INTERNAL void __cilk_sync(__cilkrts_stack_frame *sf);
+extern "C" void __cilk_sync(__cilkrts_stack_frame *sf);
 
 // Implements a cilk_sync when the cilk_sync is guaranteed not to produce an
 // exception that needs to be handled.
@@ -102,7 +102,7 @@ extern "C" void __cilk_helper_epilogue(__cilkrts_stack_frame *sf,
 
 // Performs all necessary runtime updates when execution enters a landingpad in
 // a spawning function.
-CHEETAH_INTERNAL
+extern "C"
 void __cilkrts_enter_landingpad(__cilkrts_stack_frame *sf, int32_t sel);
 
 // Called from __cilkrts_enter_landingpad to optionally fix the current stack

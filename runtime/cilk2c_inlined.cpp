@@ -28,7 +28,6 @@
 _Alignas(__cilkrts_stack_frame)
 size_t __cilkrts_stack_frame_align = __alignof__(__cilkrts_stack_frame);
 
-extern "C"
 __attribute__((always_inline)) unsigned __cilkrts_get_nworkers(void) {
     return __cilkrts_nproc;
 }
@@ -36,7 +35,6 @@ __attribute__((always_inline)) unsigned __cilkrts_get_nworkers(void) {
 // Internal method to get the Cilk worker ID.  Intended for debugging purposes.
 //
 // TODO: Figure out how we want to support worker-local storage.
-extern "C"
 __attribute__((always_inline))
 unsigned __cilkrts_get_worker_number(void) {
     __cilkrts_worker *w = __cilkrts_get_tls_worker();
@@ -46,7 +44,6 @@ unsigned __cilkrts_get_worker_number(void) {
     return 0;
 }
 
-extern "C"
 void *__cilkrts_reducer_lookup(void *key, size_t size,
                                void *identity_ptr, void *reduce_ptr) {
     // If we're outside a cilkified region, then the key is the view.
@@ -99,7 +96,6 @@ uncilkify(global_state *g, __cilkrts_stack_frame *sf) {
 
 // Enter a new Cilk function, i.e., a function that contains a cilk_spawn.  This
 // function must be inlined for correctness.
-extern "C"
 __attribute__((always_inline)) void
 __cilkrts_enter_frame(__cilkrts_stack_frame *sf) {
     sf->flags = 0;
@@ -122,7 +118,6 @@ __cilkrts_enter_frame(__cilkrts_stack_frame *sf) {
 // This function initializes worker and stack_frame structures.  Because this
 // routine will always be executed by a Cilk worker, it is optimized compared to
 // its counterpart, __cilkrts_enter_frame.
-extern "C"
 __attribute__((always_inline)) void
 __cilkrts_enter_frame_helper(__cilkrts_stack_frame *sf,
                              __cilkrts_stack_frame *parent, bool spawner) {
@@ -139,7 +134,6 @@ __cilkrts_enter_frame_helper(__cilkrts_stack_frame *sf,
     }
 }
 
-extern "C"
 __attribute__((always_inline)) int
 __cilk_prepare_spawn(__cilkrts_stack_frame *sf) {
     sysdep_save_fp_ctrl_state(sf);
@@ -152,7 +146,6 @@ __cilk_prepare_spawn(__cilkrts_stack_frame *sf) {
 
 // Detach the given Cilk stack frame, allowing other Cilk workers to steal the
 // parent frame.
-extern "C"
 __attribute__((always_inline)) void
 __cilkrts_detach(__cilkrts_stack_frame *sf, __cilkrts_stack_frame *parent) {
     __cilkrts_worker *w = get_worker_from_stack(sf);
@@ -194,7 +187,6 @@ __attribute__((always_inline)) void __cilk_sync(__cilkrts_stack_frame *sf) {
     }
 }
 
-extern "C"
 __attribute__((always_inline)) void
 __cilk_sync_nothrow(__cilkrts_stack_frame *sf) {
     if (sf->flags & CILK_FRAME_UNSYNCHED || USE_EXTENSION) {
@@ -297,13 +289,11 @@ __cilkrts_leave_frame_helper(__cilkrts_stack_frame *sf,
     }
 }
 
-extern "C"
 __attribute__((always_inline)) void
 __cilk_parent_epilogue(__cilkrts_stack_frame *sf) {
     __cilkrts_leave_frame(sf);
 }
 
-extern "C"
 __attribute__((always_inline)) void
 __cilk_helper_epilogue(__cilkrts_stack_frame *sf, __cilkrts_stack_frame *parent,
                        bool spawner) {
@@ -368,6 +358,7 @@ __cilkrts_pause_frame(__cilkrts_stack_frame *sf, __cilkrts_stack_frame *parent,
     }
 }
 
+extern "C"
 __attribute__((always_inline)) void
 __cilk_helper_epilogue_exn(__cilkrts_stack_frame *sf,
                            __cilkrts_stack_frame *parent, char *exn,

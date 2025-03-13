@@ -1,14 +1,18 @@
 #ifndef _CONFIG_H
 #define _CONFIG_H
 
-/* Functions defined in the library and visible outside the library. */
-#ifndef CHEETAH_API
+/* Functions defined in the library and visible outside the library.
+   On ELF systems the definitions can be marked protected.  */
+#ifdef CHEETAH_API_CONSUMER
+#define CHEETAH_API extern "C"
+#else
 #ifdef __ELF__
 #define CHEETAH_API extern "C" __attribute((visibility("protected")))
 #else
 #define CHEETAH_API extern "C"
 #endif
 #endif
+
 /* Functions defined in the library and not visible outside the library. */
 #ifndef CHEETAH_INTERNAL
 #define CHEETAH_INTERNAL __attribute((visibility("hidden")))
