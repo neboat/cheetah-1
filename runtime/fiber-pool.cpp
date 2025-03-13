@@ -83,7 +83,8 @@ static void fiber_pool_init(struct cilk_fiber_pool *pool, size_t stacksize,
     pool->parent = parent;
     pool->capacity = bufsize;
     pool->size = 0;
-    pool->fibers = calloc(bufsize, sizeof(*pool->fibers));
+    pool->fibers =
+      static_cast<struct cilk_fiber **>(calloc(bufsize, sizeof(*pool->fibers)));
 }
 
 /* Helper function for destroying fiber pool */
@@ -92,11 +93,11 @@ static void fiber_pool_destroy(struct cilk_fiber_pool *pool) {
     cilk_mutex_destroy(&pool->lock);
     // pool->fibers might be NULL if the fiber pool was never actually
     // initialized, e.g., because no Cilk code was run.
-    if (pool->fibers == NULL)
+    if (pool->fibers == nullptr)
         return;
     free(pool->fibers);
-    pool->parent = NULL;
-    pool->fibers = NULL;
+    pool->parent = nullptr;
+    pool->fibers = nullptr;
 }
 
 static inline void fiber_pool_assert_ownership(worker_id self,
@@ -142,7 +143,8 @@ static void fiber_pool_increase_capacity(worker_id self,
 
     if (pool->capacity < new_size) {
         struct cilk_fiber **larger =
-            realloc(pool->fibers, new_size * sizeof(*pool->fibers));
+            static_cast<struct cilk_fiber **>
+                (realloc(pool->fibers, new_size * sizeof(*pool->fibers)));
         if (!larger)
             CILK_ABORT("out of fiber memory");
         pool->fibers = larger;
@@ -297,7 +299,7 @@ void cilk_fiber_pool_global_destroy(global_state *g) {
 void cilk_fiber_pool_per_worker_zero_init(__cilkrts_worker *w) {
     struct cilk_fiber_pool *pool = &(w->l->fiber_pool);
     pool->size = 0;
-    pool->fibers = NULL;
+    pool->fibers = nullptr;
 }
 
 /**
@@ -326,7 +328,7 @@ void cilk_fiber_pool_per_worker_terminate(__cilkrts_worker *w) {
     while (pool->size > 0) {
         unsigned index = --pool->size;
         struct cilk_fiber *fiber = pool->fibers[index];
-        pool->fibers[index] = NULL;
+        pool->fibers[index] = nullptr;
         cilk_fiber_deallocate(fiber);
     }
 }
@@ -380,6 +382,6 @@ void cilk_fiber_deallocate_to_pool(__cilkrts_worker *w,
         if (pool->size > pool->stats.max_free) {
             pool->stats.max_free = pool->size;
         }
-        fiber_to_return = NULL;
+        fiber_to_return = nullptr;
     }
 }

@@ -1,10 +1,5 @@
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#include <stdatomic.h>
-#endif
 #include <sched.h>
 #include <stdint.h>
-#include <stdio.h>
 
 #include <pthread.h>
 #ifdef DEBUG
@@ -41,7 +36,7 @@ static local_state *worker_local_init(local_state *l, global_state *g) {
     l->shadow_stack = (__cilkrts_stack_frame **)calloc(
         g->options.deqdepth, sizeof(struct __cilkrts_stack_frame *));
     for (int i = 0; i < JMPBUF_SIZE; i++) {
-        l->rts_ctx[i] = NULL;
+        l->rts_ctx[i] = nullptr;
     }
     l->state = WORKER_IDLE;
     l->provably_good_steal = false;
@@ -63,8 +58,8 @@ static void worker_local_destroy(local_state *l, global_state *g) {
 static void deques_init(global_state *g) {
     cilkrts_alert(BOOT, "(deques_init) Initializing deques");
     for (unsigned int i = 0; i < g->options.nproc; i++) {
-        g->deques[i].top = NULL;
-        g->deques[i].bottom = NULL;
+        g->deques[i].top = nullptr;
+        g->deques[i].bottom = nullptr;
         g->deques[i].mutex_owner = NO_WORKER;
     }
 }
@@ -77,10 +72,8 @@ static void workers_init(global_state *g) {
             // back on.
             __cilkrts_init_tls_worker(0, g);
 
-            atomic_store_explicit(&g->dummy_worker.tail, NULL,
-                                  memory_order_relaxed);
-            atomic_store_explicit(&g->dummy_worker.head, NULL,
-                                  memory_order_relaxed);
+            g->dummy_worker.tail.store(nullptr, std::memory_order_relaxed);
+            g->dummy_worker.head.store(nullptr, std::memory_order_relaxed);
         } else {
             g->workers[i] = &g->dummy_worker;
         }
@@ -99,8 +92,7 @@ __cilkrts_worker *__cilkrts_init_tls_worker(worker_id i, global_state *g) {
     if (i == 0) {
         // Use default_worker structure for worker 0.
         w = &default_worker;
-        *(struct local_state **)(&w->l) =
-            worker_local_init(&default_worker_local_state, g);
+        w->l = worker_local_init(&default_worker_local_state, g);
         __cilkrts_set_tls_worker(w);
     } else {
         size_t alignment = 2 * __alignof__(__cilkrts_worker);
@@ -109,23 +101,22 @@ __cilkrts_worker *__cilkrts_init_tls_worker(worker_id i, global_state *g) {
             round_size_to_alignment(alignment, sizeof(__cilkrts_worker) +
                                                    sizeof(local_state)));
         w = (__cilkrts_worker *)mem;
-        *(struct local_state **)(&w->l) =
-            worker_local_init(mem + sizeof(__cilkrts_worker), g);
+        local_state *l = reinterpret_cast<local_state *>(w + 1);
+        w->l = worker_local_init(l, g);
     }
-    *(worker_id *)(&w->self) = i;
-    w->extension = NULL;
-    w->ext_stack = NULL;
-    *(struct global_state **)(&w->g) = g;
+    w->self = i;
+    w->extension = nullptr;
+    w->ext_stack = nullptr;
+    w->g = g;
 
-    *(struct __cilkrts_stack_frame ***)(&w->ltq_limit) =
-        w->l->shadow_stack + g->options.deqdepth;
+    w->ltq_limit = w->l->shadow_stack + g->options.deqdepth;
     g->workers[i] = w;
     __cilkrts_stack_frame **init = w->l->shadow_stack + 1;
-    atomic_store_explicit(&w->tail, init, memory_order_relaxed);
-    atomic_store_explicit(&w->head, init, memory_order_relaxed);
-    atomic_store_explicit(&w->exc, init, memory_order_relaxed);
+    w->tail.store(init, std::memory_order_relaxed);
+    w->head.store(init, std::memory_order_relaxed);
+    w->exc.store(init, std::memory_order_relaxed);
     if (i != 0) {
-        w->hyper_table = NULL;
+        w->hyper_table = nullptr;
     }
     // initialize internal malloc first
     cilk_internal_malloc_per_worker_init(w);
@@ -417,7 +408,7 @@ static void __cilkrts_start_workers(global_state *g) {
 // Pthreads.
 static void __cilkrts_stop_workers(global_state *g) {
     /* CILK_ASSERT( */
-    /*     !atomic_load_explicit(&g->start_thieves, memory_order_acquire)); */
+    /*     !atomic_load_explicit(&g->start_thieves, std::memory_order_acquire)); */
 
     // Set g->start and g->terminate, to allow the workers to exit their
     // outermost scheduling loop.
@@ -539,16 +530,15 @@ void __cilkrts_internal_invoke_cilkified_root(__cilkrts_stack_frame *sf) {
     // flags.
 
     /* reset_disengaged_var(g); */
-    if (__builtin_expect(
-            atomic_load_explicit(&g->cilkified, memory_order_relaxed), false)) {
+    if (__builtin_expect(g->cilkified.load(std::memory_order_relaxed), false)) {
         cilkrts_bug(
             NULL,
             "ERROR: OpenCilk runtime already executing a Cilk computation.\n");
     }
     set_cilkified(g);
 
-    // Set g->done = 0, so Cilk workers will continue trying to steal.
-    atomic_store_explicit(&g->done, 0, memory_order_release);
+    // Set g->done = false, so Cilk workers will continue trying to steal.
+    g->done.store(false, std::memory_order_release);
 
     // Wake up the thieves, to allow them to begin work stealing.
     //
@@ -593,7 +583,7 @@ void __cilkrts_internal_exit_cilkified_root(global_state *g,
     // for the start of the next Cilkified region.
     sleep_thieves(g);
 
-    atomic_store_explicit(&g->done, 1, memory_order_release);
+    g->done.store(true, std::memory_order_release);
     /* wake_all_disengaged(g); */
 
     if (!is_boss) {
@@ -601,9 +591,9 @@ void __cilkrts_internal_exit_cilkified_root(global_state *g,
         __cilkrts_worker **workers = g->workers;
         __cilkrts_worker *w0 = workers[0];
         w0->hyper_table = w->hyper_table;
-        w->hyper_table = NULL;
+        w->hyper_table = nullptr;
         w0->extension = w->extension;
-        w->extension = NULL;
+        w->extension = nullptr;
     }
 
     // Clear this worker's deque.  Nobody can successfully steal from this deque
@@ -612,8 +602,8 @@ void __cilkrts_internal_exit_cilkified_root(global_state *g,
     // deque lock to make sure no other worker has a lingering pointer to the
     // closure.
     deque_lock_self(deques, self);
-    deques[self].bottom = (Closure *)NULL;
-    deques[self].top = (Closure *)NULL;
+    deques[self].bottom = nullptr;
+    deques[self].top = nullptr;
     WHEN_CILK_DEBUG(g->root_closure->owner_ready_deque = NO_WORKER);
     deque_unlock_self(deques, self);
 
@@ -629,7 +619,7 @@ void __cilkrts_internal_exit_cilkified_root(global_state *g,
         // We finished the computation on the boss thread.  No need to jump to
         // the runtime in this case; just return normally.
         local_state *l = w->l;
-        atomic_store_explicit(&g->cilkified, 0, memory_order_relaxed);
+        g->cilkified.store(false, std::memory_order_relaxed);
         l->state = WORKER_IDLE;
         __cilkrts_need_to_cilkify = true;
 
@@ -659,26 +649,21 @@ static void global_state_deinit(global_state *g) {
     cilk_internal_malloc_global_destroy(g); // internal malloc last
     cilk_mutex_destroy(&(g->print_lock));
     cilk_mutex_destroy(&(g->index_lock));
-    // TODO: Convert to cilk_* equivalents
-    pthread_mutex_destroy(&g->cilkified_lock);
-    pthread_cond_destroy(&g->cilkified_cond_var);
     /* pthread_mutex_destroy(&g->start_thieves_lock); */
     /* pthread_cond_destroy(&g->start_thieves_cond_var); */
-    pthread_mutex_destroy(&g->disengaged_lock);
-    pthread_cond_destroy(&g->disengaged_cond_var);
     free(g->worker_args);
-    g->worker_args = NULL;
+    g->worker_args = nullptr;
     free(g->workers);
-    g->workers = NULL;
+    g->workers = nullptr;
     g->nworkers = 0;
     free(g->deques);
-    g->deques = NULL;
+    g->deques = nullptr;
     free(g->threads);
-    g->threads = NULL;
+    g->threads = nullptr;
     free(g->index_to_worker);
-    g->index_to_worker = NULL;
+    g->index_to_worker = nullptr;
     free(g->worker_to_index);
-    g->worker_to_index = NULL;
+    g->worker_to_index = nullptr;
     free(g);
 }
 
@@ -696,7 +681,7 @@ static void worker_terminate(__cilkrts_worker *w, void *data) {
     hyper_table *ht = w->hyper_table;
     if (ht) {
         local_hyper_table_free(ht);
-        w->hyper_table = NULL;
+        w->hyper_table = nullptr;
     }
     worker_local_destroy(w->l, w->g);
     cilk_internal_malloc_per_worker_terminate(w); // internal malloc last
@@ -735,13 +720,13 @@ static void workers_deinit(global_state *g) {
     unsigned i = g->options.nproc;
     while (i-- > 0) {
         __cilkrts_worker *w = g->workers[i];
-        g->workers[i] = NULL;
+        g->workers[i] = nullptr;
         if (!worker_is_valid(w, g))
             continue;
         cilk_internal_malloc_per_worker_destroy(w); // internal malloc last
         free(w->l->shadow_stack);
-        w->l->shadow_stack = NULL;
-        *(struct local_state **)(&w->l) = NULL;
+        w->l->shadow_stack = nullptr;
+        *(struct local_state **)(&w->l) = nullptr;
         if (i != 0)
             free(w);
     }

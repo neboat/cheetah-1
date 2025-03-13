@@ -4,9 +4,9 @@
 /* Functions defined in the library and visible outside the library. */
 #ifndef CHEETAH_API
 #ifdef __ELF__
-#define CHEETAH_API __attribute((visibility("protected")))
+#define CHEETAH_API extern "C" __attribute((visibility("protected")))
 #else
-#define CHEETAH_API
+#define CHEETAH_API extern "C"
 #endif
 #endif
 /* Functions defined in the library and not visible outside the library. */

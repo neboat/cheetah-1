@@ -28,7 +28,7 @@ static char *alert_log = NULL;
  **/
 typedef struct __alert_level_t {
     const char *name;
-    int mask_value;
+    unsigned int mask_value;
 } alert_level_t;
 
 /**
@@ -82,7 +82,7 @@ static int alert_name_comparison(const void *left, const void *right) {
  * @return           The bitmask corresponding to <code>alert_str<\code>, if in
  *                   <code>alert_table<\code>, else ALERT_NONE.
  **/
-static int parse_alert_level_str(const char *const alert_str) {
+static unsigned int parse_alert_level_str(const char *const alert_str) {
     size_t table_size = sizeof(alert_table) / sizeof(alert_table[0]);
 
     const alert_level_t search_key = { .name = alert_str, .mask_value = ALERT_NONE };
@@ -118,8 +118,8 @@ static int parse_alert_level_str(const char *const alert_str) {
  *                   be copied, then returns the current
  *                   <code>alert_level<\code> value.
  **/
-static int parse_alert_level_csv(const char *const alert_csv) {
-    int new_alert_lvl = ALERT_NONE;
+static unsigned int parse_alert_level_csv(const char *const alert_csv) {
+    unsigned int new_alert_lvl = ALERT_NONE;
 
     size_t csv_len = strlen(alert_csv);
 
@@ -166,7 +166,7 @@ static int parse_alert_level_csv(const char *const alert_csv) {
  **/
 void set_alert_level_from_str(const char *const alert_csv) {
     if (alert_csv) {
-        int new_alert_lvl = parse_alert_level_csv(alert_csv);
+        unsigned int new_alert_lvl = parse_alert_level_csv(alert_csv);
         set_alert_level(new_alert_lvl);
     }
 }
@@ -182,7 +182,7 @@ void set_alert_level(unsigned int level) {
     }
     if (alert_log == NULL) {
         alert_log_size = 5000;
-        alert_log = malloc(alert_log_size);
+        alert_log = static_cast<char *>(malloc(alert_log_size));
         if (alert_log) {
             memset(alert_log, ' ', alert_log_size);
         }

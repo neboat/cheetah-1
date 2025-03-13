@@ -31,11 +31,12 @@ CHEETAH_API int __cilkrts_running_on_workers(void);
 
 // Inserted at the entry of a spawning function that is not itself a spawn
 // helper.  Initializes the stack frame sf allocated for that function.
-CHEETAH_INTERNAL void __cilkrts_enter_frame(__cilkrts_stack_frame *sf);
+// XXX Move these bitcode functions to one header.
+extern "C" void __cilkrts_enter_frame(__cilkrts_stack_frame *sf);
 
 // Inserted at the entry of a spawn helper, i.e., a function that must have been
 // spawned.  Initializes the stack frame sf allocated for that function.
-CHEETAH_INTERNAL void
+extern "C" void
 __cilkrts_enter_frame_helper(__cilkrts_stack_frame *sf,
                              __cilkrts_stack_frame *parent, bool spawner);
 
@@ -46,12 +47,12 @@ __cilkrts_enter_frame_helper(__cilkrts_stack_frame *sf,
 //   if (0 == __cilk_spawn_prepare(sf)) {
 //     spawn_helper(args);
 //   }
-CHEETAH_INTERNAL int __cilk_prepare_spawn(__cilkrts_stack_frame *sf);
+extern "C" int __cilk_prepare_spawn(__cilkrts_stack_frame *sf);
 
 // Called in the spawn helper immediately before the spawned computation.
 // Enables the parent function to be stollen.
-CHEETAH_INTERNAL void __cilkrts_detach(__cilkrts_stack_frame *sf,
-                                       __cilkrts_stack_frame *parent);
+extern "C" void __cilkrts_detach(__cilkrts_stack_frame *sf,
+                                 __cilkrts_stack_frame *parent);
 
 // Check if the runtime is storing an exception we need to handle later, and
 // raises that exception if so.
@@ -62,8 +63,10 @@ CHEETAH_API void __cilkrts_check_exception_raise(__cilkrts_stack_frame *sf);
 CHEETAH_API void __cilkrts_check_exception_resume(__cilkrts_stack_frame *sf);
 
 // Performs runtime operations to handle a cilk_sync.
+extern "C" {
 __attribute__((noreturn, nothrow))
 CHEETAH_API void __cilkrts_sync(__cilkrts_stack_frame *sf);
+}
 
 // Implements a cilk_sync when the cilk_sync might produce an exception that
 // needs to be handled.
@@ -71,7 +74,7 @@ CHEETAH_INTERNAL void __cilk_sync(__cilkrts_stack_frame *sf);
 
 // Implements a cilk_sync when the cilk_sync is guaranteed not to produce an
 // exception that needs to be handled.
-CHEETAH_INTERNAL void __cilk_sync_nothrow(__cilkrts_stack_frame *sf);
+extern "C" void __cilk_sync_nothrow(__cilkrts_stack_frame *sf);
 
 // Deprecated?  Removes the current stack frame from the bottom of the stack.
 // (This logic has been manually inlined into __cilkrts_leave_frame,
@@ -90,12 +93,12 @@ __cilkrts_leave_frame_helper(__cilkrts_stack_frame *sf,
 
 // Performs all necessary operations on return from a spawning function that is
 // not itself a spawn helper.
-CHEETAH_INTERNAL void __cilk_parent_epilogue(__cilkrts_stack_frame *sf);
+extern "C" void __cilk_parent_epilogue(__cilkrts_stack_frame *sf);
 
 // Performs all necessary operations on return from a spawn-helper function.
-CHEETAH_INTERNAL void __cilk_helper_epilogue(__cilkrts_stack_frame *sf,
-                                             __cilkrts_stack_frame *parent,
-                                             bool spawner);
+extern "C" void __cilk_helper_epilogue(__cilkrts_stack_frame *sf,
+                                       __cilkrts_stack_frame *parent,
+                                       bool spawner);
 
 // Performs all necessary runtime updates when execution enters a landingpad in
 // a spawning function.
@@ -126,6 +129,6 @@ CHEETAH_INTERNAL uint32_t __cilkrts_cilk_for_grainsize_32(uint32_t n);
 CHEETAH_INTERNAL uint64_t __cilkrts_cilk_for_grainsize_64(uint64_t n);
 
 // Not marked as CHEETAH_API as it may be deprecated soon
-unsigned __cilkrts_get_nworkers(void);
+extern "C" unsigned __cilkrts_get_nworkers(void);
 
 #endif

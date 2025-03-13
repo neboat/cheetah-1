@@ -125,14 +125,14 @@ void sysdep_longjmp_to_sf(__cilkrts_stack_frame *sf) {
 
 static inline void init_fiber_header(struct cilk_fiber *fh) {
     fh->worker = INVALID_WORKER;
-    fh->current_stack_frame = NULL;
-    fh->fake_stack_save = NULL;
+    fh->current_stack_frame = nullptr;
+    fh->fake_stack_save = nullptr;
 }
 
 static inline void deinit_fiber_header(struct cilk_fiber *fh) {
     fh->worker = INVALID_WORKER;
-    fh->current_stack_frame = NULL;
-    fh->fake_stack_save = NULL;
+    fh->current_stack_frame = nullptr;
+    fh->fake_stack_save = nullptr;
 }
 
 CHEETAH_INTERNAL void cilk_fiber_pool_global_init(global_state *g);

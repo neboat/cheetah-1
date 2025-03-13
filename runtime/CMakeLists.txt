@@ -1,29 +1,31 @@
 set(CHEETAH_LIB_CMAKEFILES_DIR "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}"  PARENT_SCOPE)
 
+set(CXX_STANDARD, 20)
+
 # Get sources
 set(CHEETAH_SOURCES
-  cilk2c.c
-  cilk2c_inlined.c
-  debug.c
-  fiber.c
-  fiber-pool.c
-  global.c
-  init.c
-  internal-malloc.c
-  local-hypertable.c
-  local-reducer-api.c
-  pedigree_globals.c
-  personality.c
-  sched_stats.c
-  scheduler.c
+  cilk2c.cpp
+  cilk2c_inlined.cpp
+  debug.cpp
+  fiber.cpp
+  fiber-pool.cpp
+  global.cpp
+  init.cpp
+  internal-malloc.cpp
+  local-hypertable.cpp
+  local-reducer-api.cpp
+  pedigree_globals.cpp
+  personality.cpp
+  sched_stats.cpp
+  scheduler.cpp
 )
 
 set(CHEETAH_ABI_SOURCE
-  cilk2c_inlined.c
+  cilk2c_inlined.cpp
 )
 
 set(CHEETAH_PEDIGREE_LIB_SOURCES
-  pedigree_lib.c
+  pedigree_lib.cpp
 )
 
 set(CHEETAH_PERSONALITY_C_SOURCES

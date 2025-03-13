@@ -191,7 +191,7 @@ void sanitizer_start_switch_fiber(struct cilk_fiber *fiber) {
                 // The worker is already in user code.  Save the fake_stack for
                 // the current fiber in that fiber's header.
                 sanitizer_start_switch_fiber_fn(
-                    current_fiber->fake_stack_save,
+                    static_cast<void **>(current_fiber->fake_stack_save),
                     stack_low, (size_t)(stack_high - stack_low));
             }
             current_fiber = fiber;

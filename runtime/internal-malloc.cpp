@@ -300,7 +300,7 @@ static char *malloc_from_system(__cilkrts_worker *w, size_t size) {
         mem = malloc(size);
     }
     CILK_CHECK(w->g, mem, "Internal malloc failed to allocate %zu bytes", size);
-    return mem;
+    return static_cast<char *>(mem);
 }
 
 static void free_to_system(void *p, size_t size) {
@@ -327,8 +327,10 @@ static void extend_global_pool(__cilkrts_worker *w) {
     if (im_pool->mem_list_index >= im_pool->mem_list_size) {
         CILK_ASSERT(im_pool->mem_list_size > 0);
         size_t new_list_size = 2 * im_pool->mem_list_size;
-        im_pool->mem_list = realloc(im_pool->mem_list,
-                                    new_list_size * sizeof(*im_pool->mem_list));
+        im_pool->mem_list =
+            static_cast<char **>
+            (realloc(im_pool->mem_list,
+                     new_list_size * sizeof(*im_pool->mem_list)));
         for (size_t i = im_pool->mem_list_size; i < new_list_size; ++i) {
             im_pool->mem_list[i] = 0;
         }
@@ -399,7 +401,8 @@ void cilk_internal_malloc_global_init(global_state *g) {
     g->im_pool.mem_begin = g->im_pool.mem_end = NULL;
     g->im_pool.mem_list_index = -1;
     g->im_pool.mem_list_size = MEM_LIST_SIZE;
-    g->im_pool.mem_list = calloc(MEM_LIST_SIZE, sizeof(*g->im_pool.mem_list));
+    g->im_pool.mem_list =
+      static_cast<char **>(calloc(MEM_LIST_SIZE, sizeof(*g->im_pool.mem_list)));
     CILK_CHECK(g, g->im_pool.mem_list,
                "Cannot allocate %u * %zu bytes for mem_list", MEM_LIST_SIZE,
                sizeof(*g->im_pool.mem_list));

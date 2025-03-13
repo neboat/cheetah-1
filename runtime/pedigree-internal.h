@@ -23,9 +23,10 @@ typedef struct __pedigree_frame {
 static inline __attribute__((malloc)) __pedigree_frame *
 push_pedigree_frame(__cilkrts_worker *w) {
 #if ENABLE_EXTENSION
-    return __cilkrts_push_ext_stack(w, sizeof(__pedigree_frame));
+    return static_cast<__pedigree_frame*>
+      (__cilkrts_push_ext_stack(w, sizeof(__pedigree_frame)));
 #else
-    return NULL;
+    return nullptr;
 #endif
 }
 
@@ -70,7 +71,7 @@ bump_worker_rank(void) {
         frame->dprng_dotproduct, __pedigree_dprng_m_array[frame->dprng_depth]);
     return frame;
 #else
-    return NULL;
+    return nullptr;
 #endif
 }
 

@@ -1,6 +1,8 @@
 #ifndef _CLOSURE_TYPE_H
 #define _CLOSURE_TYPE_H
 
+#include <atomic>
+
 #include "cilk-internal.h"
 #include "fiber.h"
 #include "local-hypertable.h"
@@ -75,7 +77,8 @@ struct Closure {
     hyper_table *child_ht;
     hyper_table *user_ht;
 
-    _Atomic(worker_id) mutex_owner __attribute__((aligned(CILK_CACHE_LINE)));
+    std::atomic<worker_id> mutex_owner
+      __attribute__((aligned(CILK_CACHE_LINE)));
 
 } __attribute__((aligned(CILK_CACHE_LINE)));
 

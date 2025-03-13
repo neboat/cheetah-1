@@ -1,7 +1,7 @@
 #ifndef _READYDEQUE_H
 #define _READYDEQUE_H
 
-#include <stdatomic.h>
+#include <atomic>
 #include "closure-type.h"
 #include "rts-config.h"
 #include "worker_coord.h"
@@ -21,7 +21,8 @@ typedef struct ReadyDeque ReadyDeque;
 struct ReadyDeque {
     Closure *bottom;
     Closure *top __attribute__((aligned(CILK_CACHE_LINE)));
-    _Atomic(worker_id) mutex_owner __attribute__((aligned(CILK_CACHE_LINE)));
+    std::atomic<worker_id> mutex_owner
+      __attribute__((aligned(CILK_CACHE_LINE)));
 } __attribute__((aligned(CILK_CACHE_LINE)));
 
 /*********************************************************
@@ -30,8 +31,7 @@ struct ReadyDeque {
 
 static inline void deque_assert_ownership(ReadyDeque *deques,
                                           worker_id self, worker_id pn) {
-    CILK_ASSERT(atomic_load_explicit(&deques[pn].mutex_owner,
-                                        memory_order_relaxed) == self);
+    CILK_ASSERT(deques[pn].mutex_owner.load(std::memory_order_relaxed) == self);
     (void)deques;
     (void)self;
     (void)pn;
@@ -41,11 +41,11 @@ static inline void deque_lock_self(ReadyDeque *deques, worker_id self) {
     worker_id id = self;
     while (true) {
         worker_id current_owner =
-            atomic_load_explicit(&deques[id].mutex_owner, memory_order_relaxed);
+            deques[id].mutex_owner.load(std::memory_order_relaxed);
         if ((current_owner == NO_WORKER) &&
-            atomic_compare_exchange_weak_explicit(
-                &deques[id].mutex_owner, &current_owner, id,
-                memory_order_acq_rel, memory_order_relaxed))
+            deques[id].mutex_owner.compare_exchange_weak(
+                current_owner, id, std::memory_order_acq_rel,
+                std::memory_order_relaxed))
             return;
         busy_loop_pause();
     }
@@ -53,32 +53,30 @@ static inline void deque_lock_self(ReadyDeque *deques, worker_id self) {
 
 static inline void deque_unlock_self(ReadyDeque *deques, worker_id self) {
     worker_id id = self;
-    atomic_store_explicit(&deques[id].mutex_owner, NO_WORKER,
-                          memory_order_release);
+    deques[id].mutex_owner.store(NO_WORKER, std::memory_order_release);
 }
 
-static inline int deque_trylock(ReadyDeque *deques, worker_id self,
+static inline bool deque_trylock(ReadyDeque *deques, worker_id self,
                                 worker_id pn) {
     worker_id current_owner =
-        atomic_load_explicit(&deques[pn].mutex_owner, memory_order_relaxed);
-    if ((current_owner == NO_WORKER) &&
-        atomic_compare_exchange_weak_explicit(
-            &deques[pn].mutex_owner, &current_owner, self, memory_order_acq_rel,
-            memory_order_relaxed))
-        return 1;
+        deques[pn].mutex_owner.load(std::memory_order_relaxed);
+    if (current_owner == NO_WORKER)
+        return deques[pn].mutex_owner.compare_exchange_weak(
+            current_owner, self, std::memory_order_acq_rel,
+            std::memory_order_relaxed);
 
-    return 0;
+    return false;
 }
 
 static inline void deque_lock(ReadyDeque *deques, worker_id self,
                               worker_id pn) {
     while (true) {
         worker_id current_owner =
-            atomic_load_explicit(&deques[pn].mutex_owner, memory_order_relaxed);
+            deques[pn].mutex_owner.load(std::memory_order_relaxed);
         if ((current_owner == NO_WORKER) &&
-            atomic_compare_exchange_weak_explicit(
-                &deques[pn].mutex_owner, &current_owner, self,
-                memory_order_acq_rel, memory_order_relaxed))
+            deques[pn].mutex_owner.compare_exchange_weak(
+                current_owner, self, std::memory_order_acq_rel,
+                std::memory_order_relaxed))
             return;
         busy_loop_pause();
     }
@@ -87,8 +85,7 @@ static inline void deque_lock(ReadyDeque *deques, worker_id self,
 static inline void deque_unlock(ReadyDeque *deques, worker_id self,
                                 worker_id pn) {
     (void)self; // TODO: Remove unused parameter?
-    atomic_store_explicit(&deques[pn].mutex_owner, NO_WORKER,
-                          memory_order_release);
+    deques[pn].mutex_owner.store(NO_WORKER, std::memory_order_release);
 }
 
 /*
@@ -113,10 +110,10 @@ static inline Closure *deque_xtract_top(ReadyDeque *deques, worker_id self,
         /* ANGE: if there is only one entry in the deque ... */
         if (cl == deques[pn].bottom) {
             CILK_ASSERT_NULL(cl->next_ready);
-            deques[pn].bottom = (Closure *)NULL;
+            deques[pn].bottom = nullptr;
         } else {
             CILK_ASSERT(cl->next_ready);
-            (cl->next_ready)->prev_ready = (Closure *)NULL;
+            (cl->next_ready)->prev_ready = nullptr;
         }
         WHEN_CILK_DEBUG(cl->owner_ready_deque = NO_WORKER);
     } else {
@@ -167,10 +164,10 @@ static inline Closure *deque_xtract_bottom(ReadyDeque *deques, worker_id self,
         deques[pn].bottom = cl->prev_ready;
         if (cl == deques[pn].top) {
             CILK_ASSERT_NULL(cl->prev_ready);
-            deques[pn].top = (Closure *)NULL;
+            deques[pn].top = nullptr;
         } else {
             CILK_ASSERT(cl->prev_ready);
-            (cl->prev_ready)->next_ready = (Closure *)NULL;
+            (cl->prev_ready)->next_ready = nullptr;
         }
 
         WHEN_CILK_DEBUG(cl->owner_ready_deque = NO_WORKER);
@@ -210,7 +207,7 @@ static inline void deque_add_bottom(ReadyDeque *deques, Closure *cl,
     CILK_ASSERT(cl->owner_ready_deque == NO_WORKER);
 
     cl->prev_ready = deques[pn].bottom;
-    cl->next_ready = (Closure *)NULL;
+    cl->next_ready = nullptr;
     deques[pn].bottom = cl;
     WHEN_CILK_DEBUG(cl->owner_ready_deque = pn);
 

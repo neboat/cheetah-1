@@ -1,8 +1,7 @@
 #ifndef _CLOSURE_H
 #define _CLOSURE_H
 
-// Includes
-#include <stdatomic.h>
+#include <atomic>
 #include "debug.h"
 
 #include "cilk-internal.h"
@@ -32,13 +31,11 @@ static inline const char *Closure_status_to_str(enum ClosureStatus status) {
 
 #if CILK_DEBUG
 static inline void Closure_assert_ownership(worker_id self, Closure *t) {
-    CILK_ASSERT(
-        atomic_load_explicit(&t->mutex_owner, memory_order_relaxed) == self);
+    CILK_ASSERT(t->mutex_owner.load(std::memory_order_relaxed) == self);
 }
 
 static inline void Closure_assert_alienation(worker_id self, Closure *t) {
-    CILK_ASSERT(
-        atomic_load_explicit(&t->mutex_owner, memory_order_relaxed) != self);
+    CILK_ASSERT(t->mutex_owner.load(std::memory_order_relaxed) != self);
 }
 
 static inline void Closure_checkmagic(Closure *t) {
@@ -80,28 +77,25 @@ static inline void Closure_set_status(Closure *t, enum ClosureStatus status) {
     t->status = status;
 }
 
-static inline int Closure_trylock(worker_id self, Closure *t) {
+static inline bool Closure_trylock(worker_id self, Closure *t) {
     Closure_checkmagic(t);
-    worker_id current_owner =
-        atomic_load_explicit(&t->mutex_owner, memory_order_relaxed);
-    if ((current_owner == NO_WORKER) &&
-        atomic_compare_exchange_weak_explicit(&t->mutex_owner, &current_owner,
-                                              self, memory_order_acq_rel,
-                                              memory_order_relaxed))
-        return 1;
-
-    return 0;
+    worker_id current_owner = t->mutex_owner.load(std::memory_order_relaxed);
+    if (current_owner != NO_WORKER)
+        return false;
+    return t->mutex_owner.compare_exchange_weak(current_owner, self,
+                                                std::memory_order_acq_rel,
+                                                std::memory_order_relaxed);
 }
 
 static inline void Closure_lock(worker_id self, Closure *t) {
     Closure_checkmagic(t);
     while (true) {
         worker_id current_owner =
-            atomic_load_explicit(&t->mutex_owner, memory_order_relaxed);
+            t->mutex_owner.load(std::memory_order_relaxed);
         if ((current_owner == NO_WORKER) &&
-            atomic_compare_exchange_weak_explicit(
-                &t->mutex_owner, &current_owner, self, memory_order_acq_rel,
-                memory_order_relaxed))
+            t->mutex_owner.compare_exchange_weak(
+                current_owner, self, std::memory_order_acq_rel,
+                std::memory_order_relaxed))
             break;
         busy_loop_pause();
     }
@@ -111,7 +105,7 @@ static inline void Closure_unlock(worker_id self, Closure *t) {
     (void)self; // unused if assertions disabled
     Closure_checkmagic(t);
     Closure_assert_ownership(self, t);
-    atomic_store_explicit(&t->mutex_owner, NO_WORKER, memory_order_release);
+    t->mutex_owner.store(NO_WORKER, std::memory_order_release);
 }
 
 // need to be careful when calling this function --- we check whether a
@@ -123,10 +117,8 @@ static inline void Closure_unlock(worker_id self, Closure *t) {
 // mean while, the stolen flag is not set until finish_promote.
 static inline int Closure_at_top_of_stack(__cilkrts_worker *const w,
                                           __cilkrts_stack_frame *const frame) {
-    __cilkrts_stack_frame **head =
-        atomic_load_explicit(&w->head, memory_order_relaxed);
-    __cilkrts_stack_frame **tail =
-        atomic_load_explicit(&w->tail, memory_order_relaxed);
+    __cilkrts_stack_frame **head = w->head.load(std::memory_order_relaxed);
+    __cilkrts_stack_frame **tail = w->tail.load(std::memory_order_relaxed);
     return (head == tail && __cilkrts_stolen(frame));
 }
 
@@ -136,7 +128,7 @@ static inline int Closure_has_children(Closure *cl) {
 }
 
 static inline void Closure_init(Closure *t, __cilkrts_stack_frame *frame) {
-    atomic_store_explicit(&t->mutex_owner, NO_WORKER, memory_order_relaxed);
+    t->mutex_owner.store(NO_WORKER, std::memory_order_relaxed);
     t->owner_ready_deque = NO_WORKER;
     t->status = CLOSURE_PRE_INVALID;
     t->has_cilk_callee = false;
@@ -144,36 +136,37 @@ static inline void Closure_init(Closure *t, __cilkrts_stack_frame *frame) {
     t->join_counter = 0;
 
     t->frame = frame;
-    t->fiber = NULL;
-    t->fiber_child = NULL;
-    t->ext_fiber = NULL;
-    t->ext_fiber_child = NULL;
+    t->fiber = nullptr;
+    t->fiber_child = nullptr;
+    t->ext_fiber = nullptr;
+    t->ext_fiber_child = nullptr;
 
-    t->orig_rsp = NULL;
+    t->orig_rsp = nullptr;
 
-    t->callee = NULL;
+    t->callee = nullptr;
 
-    t->call_parent = NULL;
-    t->spawn_parent = NULL;
+    t->call_parent = nullptr;
+    t->spawn_parent = nullptr;
 
-    t->left_sib = NULL;
-    t->right_sib = NULL;
-    t->right_most_child = NULL;
+    t->left_sib = nullptr;
+    t->right_sib = nullptr;
+    t->right_most_child = nullptr;
 
-    t->next_ready = NULL;
-    t->prev_ready = NULL;
+    t->next_ready = nullptr;
+    t->prev_ready = nullptr;
 
-    t->user_ht = NULL;
-    t->child_ht = NULL;
-    t->right_ht = NULL;
+    t->user_ht = nullptr;
+    t->child_ht = nullptr;
+    t->right_ht = nullptr;
 }
 
 static inline Closure *Closure_create(__cilkrts_worker *const w,
                                       __cilkrts_stack_frame *sf) {
     /* cilk_internal_malloc returns sufficiently aligned memory */
     Closure *new_closure =
-        cilk_internal_malloc(w, sizeof(*new_closure), IM_CLOSURE);
-    CILK_ASSERT(new_closure != NULL);
+        static_cast<Closure *>
+        (cilk_internal_malloc(w, sizeof(*new_closure), IM_CLOSURE));
+    CILK_ASSERT(new_closure != nullptr);
 
     Closure_init(new_closure, sf);
 
@@ -183,7 +176,7 @@ static inline Closure *Closure_create(__cilkrts_worker *const w,
 }
 
 static inline void Closure_clear_frame(Closure *cl) {
-    cl->frame = NULL;
+    cl->frame = nullptr;
 }
 
 static inline void Closure_set_frame(Closure *cl, __cilkrts_stack_frame *sf) {
@@ -219,8 +212,8 @@ static inline void unlink_child(Closure *cl) {
         cl->right_sib->left_sib = cl->left_sib;
     }
     // used only for error checking
-    cl->left_sib = (Closure *)NULL;
-    cl->right_sib = (Closure *)NULL;
+    cl->left_sib = nullptr;
+    cl->right_sib = nullptr;
 }
 
 /***
@@ -326,7 +319,7 @@ void Closure_remove_callee(Closure *caller) {
     CILK_ASSERT(caller->status == CLOSURE_SUSPENDED);
     CILK_ASSERT(caller->has_cilk_callee);
     caller->has_cilk_callee = false;
-    caller->callee = NULL;
+    caller->callee = nullptr;
 }
 
 /* This function is used for steal, the next function for sync.
@@ -360,7 +353,7 @@ static inline void Closure_suspend(struct ReadyDeque *deques, worker_id self,
     Closure_assert_ownership(self, cl);
     deque_assert_ownership(deques, self, self);
 
-    CILK_ASSERT(cl->frame != NULL);
+    CILK_ASSERT(cl->frame != nullptr);
     CILK_ASSERT(__cilkrts_stolen(cl->frame));
 
     Closure_change_status(cl, CLOSURE_RUNNING, CLOSURE_SUSPENDED);

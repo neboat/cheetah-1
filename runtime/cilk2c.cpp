@@ -1,5 +1,5 @@
-#include <stdatomic.h>
-#include <stdio.h>
+#include <atomic>
+
 #include <unwind.h>
 
 #include "debug.h"
@@ -13,7 +13,12 @@
 #include "scheduler.h"
 
 CHEETAH_INTERNAL
-struct closure_exception exception_reducer = {.exn = NULL};
+struct closure_exception exception_reducer = {
+  .exn = nullptr,
+  .reraise_cfa = nullptr,
+  .parent_rsp = nullptr,
+  .throwing_fiber = nullptr
+};
 
 extern void _Unwind_Resume(struct _Unwind_Exception *);
 extern _Unwind_Reason_Code _Unwind_RaiseException(struct _Unwind_Exception *);
@@ -153,6 +158,8 @@ void __cilkrts_cleanup_fiber(__cilkrts_stack_frame *sf, int32_t sel) {
     return;
 }
 
+extern "C"
+__attribute__((noreturn, nothrow))
 void __cilkrts_sync(__cilkrts_stack_frame *sf) {
     __cilkrts_worker *w = get_worker_from_stack(sf);
     CILK_ASSERT_POINTER_EQUAL(w, __cilkrts_get_tls_worker());

@@ -24,15 +24,15 @@ typedef cpuset_t cpu_set_t;
 global_state *default_cilkrts;
 
 __cilkrts_worker default_worker = {.self = 0,
-                                   .hyper_table = NULL,
-                                   .g = NULL,
-                                   .l = NULL,
-                                   .extension = NULL,
-                                   .ext_stack = NULL,
-                                   .tail = NULL,
-                                   .exc = NULL,
-                                   .head = NULL,
-                                   .ltq_limit = NULL};
+                                   .hyper_table = nullptr,
+                                   .g = nullptr,
+                                   .l = nullptr,
+                                   .extension = nullptr,
+                                   .ext_stack = nullptr,
+                                   .tail = nullptr,
+                                   .exc = nullptr,
+                                   .head = nullptr,
+                                   .ltq_limit = nullptr};
 CHEETAH_INTERNAL
 local_state default_worker_local_state;
 
@@ -57,14 +57,7 @@ static global_state *global_state_allocate() {
     cilk_mutex_init(&g->index_lock);
     cilk_mutex_init(&g->print_lock);
 
-    atomic_store_explicit(&g->cilkified_futex, 0, memory_order_relaxed);
-
-    // TODO: Convert to cilk_* equivalents
-    pthread_mutex_init(&g->cilkified_lock, NULL);
-    pthread_cond_init(&g->cilkified_cond_var, NULL);
-
-    pthread_mutex_init(&g->disengaged_lock, NULL);
-    pthread_cond_init(&g->disengaged_cond_var, NULL);
+    g->cilkified.store(false, std::memory_order_relaxed);
 
     return g;
 }
@@ -168,9 +161,9 @@ global_state *global_state_init(int argc, char *argv[]) {
 
     g->workers_started = false;
     g->root_closure_initialized = false;
-    atomic_store_explicit(&g->done, 0, memory_order_relaxed);
-    atomic_store_explicit(&g->cilkified, 0, memory_order_relaxed);
-    atomic_store_explicit(&g->disengaged_sentinel, 0, memory_order_relaxed);
+    g->done.store(false, std::memory_order_relaxed);
+    g->cilkified.store(false, std::memory_order_relaxed);
+    g->disengaged_sentinel.store(0, std::memory_order_relaxed);
 
     g->terminate = false;
 

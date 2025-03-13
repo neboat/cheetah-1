@@ -1,7 +1,7 @@
 #include "debug.h"
 #include <assert.h>
 #include <pthread.h>
-#include <stdatomic.h>
+#include <atomic>
 #include <stdint.h>
 #ifdef __linux__
 #include <sched.h>
@@ -94,12 +94,11 @@ static void increment_exception_pointer(worker_id self,
     Closure_assert_ownership(self, cl);
     CILK_ASSERT(cl->status == CLOSURE_RUNNING);
 
-    __cilkrts_stack_frame **exc =
-        atomic_load_explicit(&victim_w->exc, memory_order_relaxed);
+    __cilkrts_stack_frame **exc = victim_w->exc.load(std::memory_order_relaxed);
     if (exc != EXCEPTION_INFINITY) {
         /* SEQ_CST order is required between increment of exc and test of tail.
          Currently do_dekker_on has a fence. */
-        atomic_store_explicit(&victim_w->exc, exc + 1, memory_order_relaxed);
+        victim_w->exc.store(exc + 1, std::memory_order_relaxed);
     }
 }
 
@@ -107,10 +106,9 @@ static void decrement_exception_pointer(worker_id self,
                                         __cilkrts_worker *const victim_w,
                                         Closure *cl) {
     Closure_assert_ownership(self, cl);
-    __cilkrts_stack_frame **exc =
-        atomic_load_explicit(&victim_w->exc, memory_order_relaxed);
+    __cilkrts_stack_frame **exc = victim_w->exc.load(std::memory_order_relaxed);
     if (exc != EXCEPTION_INFINITY) {
-        atomic_store_explicit(&victim_w->exc, exc - 1, memory_order_relaxed);
+        victim_w->exc.store(exc - 1, std::memory_order_relaxed);
     }
 }
 
@@ -118,9 +116,8 @@ static void reset_exception_pointer(__cilkrts_worker *const w, worker_id self,
                                     Closure *cl) {
     Closure_assert_ownership(self, cl);
     CILK_ASSERT((cl->frame == NULL) || (cl->fiber->worker == w));
-    atomic_store_explicit(&w->exc,
-                          atomic_load_explicit(&w->head, memory_order_relaxed),
-                          memory_order_release);
+    w->exc.store(w->head.load(std::memory_order_relaxed),
+                 std::memory_order_release);
 }
 
 /* Unused for now but may be helpful later
@@ -144,9 +141,9 @@ static void setup_for_execution(__cilkrts_worker *w, Closure *t) {
     Closure_set_status(t, CLOSURE_RUNNING);
 
     __cilkrts_stack_frame **init = w->l->shadow_stack;
-    atomic_store_explicit(&w->head, init, memory_order_relaxed);
-    atomic_store_explicit(&w->exc, init, memory_order_relaxed);
-    atomic_store_explicit(&w->tail, init, memory_order_release);
+    w->head.store(init, std::memory_order_relaxed);
+    w->exc.store(init, std::memory_order_relaxed);
+    w->tail.store(init, std::memory_order_release);
 
     /* push the first frame on the current_stack_frame */
     __cilkrts_stack_frame *sf = t->frame;
@@ -255,8 +252,7 @@ void Cilk_set_return(__cilkrts_worker *const w) {
     CILK_ASSERT(Closure_has_children(t) == 0);
 
     // all hyperobjects from child or right sibling must have been reduced
-    CILK_ASSERT(t->child_ht == (hyper_table *)NULL &&
-                       t->right_ht == (hyper_table *)NULL);
+    CILK_ASSERT(t->child_ht == nullptr && t->right_ht == nullptr);
     CILK_ASSERT(t->call_parent);
     CILK_ASSERT_NULL(t->spawn_parent);
     CILK_ASSERT((t->frame->flags & CILK_FRAME_DETACHED) == 0);
@@ -353,7 +349,7 @@ static Closure *provably_good_steal_maybe(__cilkrts_worker *const w,
 static Closure *Closure_return(__cilkrts_worker *const w, worker_id self,
                                Closure *child) {
 
-    Closure *res = (Closure *)NULL;
+    Closure *res = nullptr;
     Closure *const parent = child->spawn_parent;
 
     CILK_ASSERT(child);
@@ -561,10 +557,8 @@ void Cilk_exception_handler(__cilkrts_worker *w, char *exn) {
                        t->status == CLOSURE_RETURNING);
 
     /* These will not change while the deque is locked. */
-    __cilkrts_stack_frame **head =
-        atomic_load_explicit(&w->head, memory_order_relaxed);
-    __cilkrts_stack_frame **tail =
-        atomic_load_explicit(&w->tail, memory_order_relaxed);
+    __cilkrts_stack_frame **head = w->head.load(std::memory_order_relaxed);
+    __cilkrts_stack_frame **tail = w->tail.load(std::memory_order_relaxed);
     if (head > tail) {
         cilkrts_alert(EXCEPT, "(Cilk_exception_handler) this is a steal!");
         if (NULL != exn) {
@@ -572,8 +566,10 @@ void Cilk_exception_handler(__cilkrts_worker *w, char *exn) {
             // object for later processing.
             struct closure_exception *exn_r =
                 (struct closure_exception *)internal_reducer_lookup(
-                    w, &exception_reducer, sizeof(exception_reducer),
-                    init_exception_reducer, reduce_exception_reducer);
+                    w, static_cast<void *>(&exception_reducer),
+                    sizeof(exception_reducer),
+                    reinterpret_cast<void *>(init_exception_reducer),
+                    reinterpret_cast<void *>(reduce_exception_reducer));
             exn_r->exn = exn;
             t->exception_pending = true;
         }
@@ -715,16 +711,14 @@ static __cilkrts_stack_frame **do_dekker_on(worker_id self,
        have a SEQ_CST fence or atomic.  Additionally the increment of
        tail in compiled code has release semantics and needs to be paired
        with an acquire load unless there is an intervening fence. */
-    atomic_thread_fence(memory_order_seq_cst);
+    atomic_thread_fence(std::memory_order_seq_cst);
 
     /*
      * The thief won't steal from this victim if there is only one frame on cl's
      * stack
      */
-    __cilkrts_stack_frame **head =
-        atomic_load_explicit(&victim_w->head, memory_order_relaxed);
-    __cilkrts_stack_frame **tail =
-        atomic_load_explicit(&victim_w->tail, memory_order_acquire);
+    __cilkrts_stack_frame **head = victim_w->head.load(std::memory_order_relaxed);
+    __cilkrts_stack_frame **tail = victim_w->tail.load(std::memory_order_acquire);
     if (head >= tail) {
         decrement_exception_pointer(self, victim_w, cl);
         return NULL;
@@ -863,7 +857,7 @@ static Closure *promote_child(__cilkrts_stack_frame **head, ReadyDeque *deques,
     }
 
     if (spawn_parent->orig_rsp == NULL) {
-        spawn_parent->orig_rsp = SP(frame_to_steal);
+        spawn_parent->orig_rsp = static_cast<char *>(SP(frame_to_steal));
     }
 
     CILK_ASSERT(spawn_parent->has_cilk_callee == 0);
@@ -882,7 +876,7 @@ static Closure *promote_child(__cilkrts_stack_frame **head, ReadyDeque *deques,
 
     ++spawn_parent->join_counter;
 
-    atomic_store_explicit(&victim_w->head, head + 1, memory_order_release);
+    victim_w->head.store(head + 1, std::memory_order_release);
 
 
     /* insert the closure on the victim processor's deque */
@@ -961,7 +955,7 @@ static Closure *extract_top_spawning_closure(__cilkrts_stack_frame **head,
                   (void *)cl, (void *)res, (void *)child);
 
     /* detach the parent */
-    if (res == (Closure *)NULL) {
+    if (res == nullptr) {
         // ANGE: in this case, the spawning parent to steal / resume
         // is simply cl (i.e., there is only one frame in the stacklet),
         // so we didn't set res in promote_child.
@@ -994,16 +988,14 @@ static Closure *Closure_steal(__cilkrts_worker **workers,
                               worker_id self, worker_id victim) {
 
     Closure *cl;
-    Closure *res = (Closure *)NULL;
+    Closure *res = nullptr;
     __cilkrts_worker *victim_w;
     victim_w = workers[victim];
 
     // Fast test for an unsuccessful steal attempt using only read operations.
     // This fast test seems to improve parallel performance.
-    __cilkrts_stack_frame **head =
-        atomic_load_explicit(&victim_w->head, memory_order_relaxed);
-    __cilkrts_stack_frame **tail =
-        atomic_load_explicit(&victim_w->tail, memory_order_relaxed);
+    __cilkrts_stack_frame **head = victim_w->head.load(std::memory_order_relaxed);
+    __cilkrts_stack_frame **tail = victim_w->tail.load(std::memory_order_relaxed);
     if (head >= tail) {
         return NULL;
     }
@@ -1305,7 +1297,7 @@ static void do_what_it_says(ReadyDeque *deques, __cilkrts_worker *w,
         cilkrts_alert(SCHED, "(do_what_it_says) closure %p", (void *)t);
 
         switch (t->status) {
-        case CLOSURE_RUNNING:
+        case CLOSURE_RUNNING: {
             cilkrts_alert(SCHED, "(do_what_it_says) CLOSURE_READY");
             /* just execute it */
             f = t->frame;
@@ -1358,8 +1350,8 @@ static void do_what_it_says(ReadyDeque *deques, __cilkrts_worker *w,
                     deque_unlock_self(deques, self);
                 }
             }
-
             break; // ?
+        }
 
         case CLOSURE_RETURNING:
             cilkrts_alert(SCHED, "(do_what_it_says) CLOSURE_RETURNING");
@@ -1448,7 +1440,7 @@ static inline void non_boss_scheduler(__cilkrts_worker *w) {
        // region is started soon.
        unsigned int busy_fail = 0;
        while (busy_fail++ < BUSY_LOOP_SPIN &&
-              atomic_load_explicit(&rts->done, memory_order_relaxed)) {
+              rts->done.load(std::memory_order_relaxed)) {
            busy_pause();
        }
        if (thief_should_wait(rts)) {
@@ -1498,24 +1490,23 @@ void worker_scheduler(__cilkrts_worker *w, history_t *const history) {
     __cilkrts_worker **workers = rts->workers;
     ReadyDeque *deques = rts->deques;
 
-    while (!atomic_load_explicit(&rts->done, memory_order_acquire)) {
+    while (!rts->done.load(std::memory_order_acquire)) {
         /* A worker entering the steal loop must have saved its reducer map into
            the frame to which it belongs. */
-        CILK_ASSERT(!w->hyper_table ||
-                           (self == 0 && atomic_load_explicit(
-                                           &rts->done, memory_order_acquire)));
+        if (w->hyper_table)
+            CILK_ASSERT(self == 0 && rts->done.load(std::memory_order_acquire));
 
         CILK_STOP_TIMING(w, INTERVAL_SCHED);
 
-        while (!t && !atomic_load_explicit(&rts->done, memory_order_acquire)) {
+        while (!t && !rts->done.load(std::memory_order_acquire)) {
             CILK_START_TIMING(w, INTERVAL_SCHED);
             CILK_START_TIMING(w, INTERVAL_IDLE);
 #if ENABLE_THIEF_SLEEP
             // Get the set of workers we can steal from and a local copy of the
             // index-to-worker map.  We'll attempt a few steals using these
             // local copies to minimize memory traffic.
-            uint64_t disengaged_sentinel = atomic_load_explicit(
-                &rts->disengaged_sentinel, memory_order_relaxed);
+            uint64_t disengaged_sentinel =
+                rts->disengaged_sentinel.load(std::memory_order_relaxed);
             uint32_t disengaged = GET_DISENGAGED(disengaged_sentinel);
             uint32_t stealable = nworkers - disengaged;
             __attribute__((unused))
@@ -1717,7 +1708,7 @@ void *scheduler_thread_proc(void *arg) {
         // updated by any operations that occurred outside of Cilkified regions.
         // Such operations, for example might have updated the left-most view of
         // a reducer.
-        if (!atomic_load_explicit(&rts->done, memory_order_acquire)) {
+        if (!rts->done.load(std::memory_order_acquire)) {
             non_boss_scheduler(w);
         }
 

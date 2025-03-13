@@ -2,10 +2,9 @@
 #define _CILK_GLOBAL_H
 
 #include <pthread.h>
-#include <stdbool.h>
 #include <stdint.h>
 
-#include <stdatomic.h> /* must follow stdbool.h */
+#include <atomic>
 
 #include "debug.h"
 #include "fiber.h"
@@ -67,21 +66,13 @@ struct global_state {
     void *orig_rsp;
     bool workers_started;
 
-    // These fields are shared between the boss thread and a couple workers.
+    // This field is shared between the boss thread and a couple workers.
 
-    // NOTE: We can probably update the runtime system so that, when it uses
-    // cilkified_futex, it does not also use the cilkified field.  But the
-    // cilkified field is helpful for debugging, and it seems unlikely that this
-    // optimization would improve performance.
-    _Atomic uint32_t cilkified_futex __attribute__((aligned(CILK_CACHE_LINE)));
-    atomic_bool cilkified;
-
-    pthread_mutex_t cilkified_lock;
-    pthread_cond_t cilkified_cond_var;
+    std::atomic<bool> cilkified __attribute__((aligned(CILK_CACHE_LINE)));
 
     // These fields are shared among all workers in the work-stealing loop.
 
-    atomic_bool done __attribute__((aligned(CILK_CACHE_LINE)));
+    std::atomic<bool> done __attribute__((aligned(CILK_CACHE_LINE)));
     bool terminate;
     bool root_closure_initialized;
 
@@ -93,15 +84,12 @@ struct global_state {
     // the disengaged workers.  Lower 32 bits count the sentinel workers.  These
     // two counts are stored in a single word to make it easier to update both
     // counts atomically.
-    _Atomic uint64_t disengaged_sentinel __attribute__((aligned(CILK_CACHE_LINE)));
+    std::atomic<uint64_t> disengaged_sentinel __attribute__((aligned(CILK_CACHE_LINE)));
 #define GET_DISENGAGED(D) ((D) >> 32)
 #define GET_SENTINEL(D) ((D) & 0xffffffff)
 #define DISENGAGED_SENTINEL(A, B) (((uint64_t)(A) << 32) | (uint32_t)(B))
 
-    _Atomic uint32_t disengaged_thieves_futex __attribute__((aligned(CILK_CACHE_LINE)));
-
-    pthread_mutex_t disengaged_lock;
-    pthread_cond_t disengaged_cond_var;
+    std::atomic<uint32_t> disengaged_thieves __attribute__((aligned(CILK_CACHE_LINE)));
 
     cilk_mutex print_lock; // global lock for printing messages
 

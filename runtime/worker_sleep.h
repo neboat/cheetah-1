@@ -70,9 +70,9 @@ static inline __attribute__((always_inline)) uint64_t gettime_fast(void) {
 }
 
 typedef struct worker_counts {
-    int32_t active;
-    int32_t sentinels;
-    int32_t disengaged;
+    long active;
+    long sentinels;
+    long disengaged;
 } worker_counts;
 
 // Update the index-to-worker map to swap self with the worker at the target
@@ -99,15 +99,13 @@ static void swap_worker_with_target(global_state *g, worker_id self,
 __attribute__((always_inline)) static inline uint64_t
 add_to_sentinels(global_state *const rts, int32_t val) {
     // val is sign extended to 64 bits
-    return atomic_fetch_add_explicit(&rts->disengaged_sentinel, val,
-                                     memory_order_release);
+    return rts->disengaged_sentinel.fetch_add(val, std::memory_order_release);
 }
 
 __attribute__((always_inline)) static inline uint64_t
 add_to_disengaged(global_state *const rts, int32_t val) {
-    return atomic_fetch_add_explicit(&rts->disengaged_sentinel,
-                                     DISENGAGED_SENTINEL(val, 0),
-                                     memory_order_acquire);
+    return rts->disengaged_sentinel.fetch_add(DISENGAGED_SENTINEL(val, 0),
+                                              std::memory_order_acquire);
 }
 
 #if ENABLE_THIEF_SLEEP
@@ -136,10 +134,9 @@ static bool try_to_disengage_thief(global_state *g, worker_id self,
     // First atomically update the number of disengaged workers.
     // The compare and exchange fails if the sentinel or disenaged
     // count has changed.
-    if (atomic_compare_exchange_strong_explicit(
-            &g->disengaged_sentinel, &disengaged_sentinel,
-            new_disengaged_sentinel, memory_order_release,
-            memory_order_acquire)) {
+    if (g->disengaged_sentinel.compare_exchange_strong(
+            disengaged_sentinel, new_disengaged_sentinel,
+            std::memory_order_release, std::memory_order_acquire)) {
         // Update the index-to-worker map.
         worker_id last_index = nworkers - (new_disengaged_sentinel >> 32);
         if (worker_to_index[self] < last_index) {
@@ -156,8 +153,7 @@ static bool try_to_disengage_thief(global_state *g, worker_id self,
 
         // Decrement the number of disengaged workers.
         uint64_t disengaged_sentinel =
-            atomic_fetch_add(&g->disengaged_sentinel,
-                             DISENGAGED_SENTINEL(-1, 1));
+            g->disengaged_sentinel.fetch_add(DISENGAGED_SENTINEL(-1, 1));
 
         last_index = nworkers - GET_DISENGAGED(disengaged_sentinel);
         if (worker_to_index[self] > last_index) {
@@ -306,8 +302,8 @@ maybe_reengage_workers(global_state *const rts, worker_id self,
         // out of sentinels.
         if (request == 0 && counts.sentinels == 0 &&
             counts.active < (int32_t)nworkers) {
-            int32_t current_request = atomic_load_explicit(
-                &rts->disengaged_thieves_futex, memory_order_relaxed);
+            int32_t current_request =
+                rts->disengaged_thieves.load(std::memory_order_relaxed);
             if (current_request < ((counts.active + 3) / 4)) {
                 request = ((counts.active + 3) / 4) - current_request;
                 WHEN_SCHED_STATS(w->l->stats.onesen_rqsts += request);
@@ -342,7 +338,7 @@ static bool maybe_disengage_thief(global_state *g, worker_id self,
     while (true) {
         // Check if this sentinel thread should sleep.
         uint64_t disengaged_sentinel =
-            atomic_load_explicit(&g->disengaged_sentinel, memory_order_acquire);
+            g->disengaged_sentinel.load(std::memory_order_acquire);
 
         worker_counts counts = get_worker_counts(disengaged_sentinel, nworkers);
 
@@ -408,8 +404,8 @@ handle_failed_steal_attempts(global_state *const rts, worker_id self,
             }
 
             // Check the current worker counts.
-            uint64_t disengaged_sentinel = atomic_load_explicit(
-                &rts->disengaged_sentinel, memory_order_acquire);
+            uint64_t disengaged_sentinel =
+                rts->disengaged_sentinel.load(std::memory_order_acquire);
             worker_counts counts =
                 get_worker_counts(disengaged_sentinel, nworkers);
 
@@ -476,9 +472,8 @@ handle_failed_steal_attempts(global_state *const rts, worker_id self,
 
                                 // Update the sentinel count.
                                 uint64_t disengaged_sentinel =
-                                    atomic_load_explicit(
-                                        &rts->disengaged_sentinel,
-                                        memory_order_relaxed);
+                                    rts->disengaged_sentinel.load(
+                                        std::memory_order_relaxed);
                                 uint32_t current_sentinel_count =
                                     GET_SENTINEL(disengaged_sentinel);
                                 for (int i = 0; i < SENTINEL_COUNT_HISTORY; ++i)
@@ -603,8 +598,7 @@ init_fails(uint32_t wake_val, global_state *rts) {
     // As a result, when workers are woken up to start executing any new Cilk
     // function, half of them will be active, and half sentinels.
     if (wake_val <= (rts->nworkers / 2)) {
-        atomic_fetch_add_explicit(&rts->disengaged_sentinel, 1,
-                                  memory_order_release);
+        rts->disengaged_sentinel.fetch_add(1, std::memory_order_release);
         return SENTINEL_THRESHOLD;
     }
     return 0;

@@ -11,8 +11,8 @@ uint64_t __pedigree_dprng_m_X = 0;
 CHEETAH_INTERNAL
 __pedigree_frame root_frame = {.pedigree = {.rank = 0, .parent = NULL},
                                .rank = 0,
-                               .dprng_depth = 0,
-                               .dprng_dotproduct = 0};
+                               .dprng_dotproduct = 0,
+                               .dprng_depth = 0};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Initialization and deinitialization
@@ -66,7 +66,7 @@ __attribute__((constructor)) void __pedigree_startup(void) {
 // sensible-looking linker errors.
 
 // Helper method to advance the pedigree and dprng states.
-void __cilkrts_bump_worker_rank(void) { bump_worker_rank(); }
+void __cilkrts_bump_worker_rank(void) __CILKRTS_NOTHROW { bump_worker_rank(); }
 
 // Set the seed for the dprand DPRNG.
 void __cilkrts_dprand_set_seed(uint64_t seed) {

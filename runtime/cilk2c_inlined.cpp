@@ -4,8 +4,7 @@
 // program.
 // =============================================================================
 
-#include <stdatomic.h>
-#include <stdio.h>
+#include <atomic>
 #include <unwind.h>
 
 #include "cilk-internal.h"
@@ -19,7 +18,7 @@
 #include "local-reducer-api.h"
 #include "scheduler.h"
 
-#include "pedigree_ext.c"
+#include "pedigree_ext.cpp"
 #include "worker.h"
 
 // This variable encodes the alignment of a __cilkrts_stack_frame, both in its
@@ -29,6 +28,7 @@
 _Alignas(__cilkrts_stack_frame)
 size_t __cilkrts_stack_frame_align = __alignof__(__cilkrts_stack_frame);
 
+extern "C"
 __attribute__((always_inline)) unsigned __cilkrts_get_nworkers(void) {
     return __cilkrts_nproc;
 }
@@ -36,6 +36,7 @@ __attribute__((always_inline)) unsigned __cilkrts_get_nworkers(void) {
 // Internal method to get the Cilk worker ID.  Intended for debugging purposes.
 //
 // TODO: Figure out how we want to support worker-local storage.
+extern "C"
 __attribute__((always_inline))
 unsigned __cilkrts_get_worker_number(void) {
     __cilkrts_worker *w = __cilkrts_get_tls_worker();
@@ -45,12 +46,13 @@ unsigned __cilkrts_get_worker_number(void) {
     return 0;
 }
 
+extern "C"
 void *__cilkrts_reducer_lookup(void *key, size_t size,
                                void *identity_ptr, void *reduce_ptr) {
     // If we're outside a cilkified region, then the key is the view.
     if (__cilkrts_need_to_cilkify)
         return key;
-    struct local_hyper_table *table = get_hyper_table();
+    struct hyper_table *table = get_hyper_table();
     struct bucket *b = find_hyperobject(table, (uintptr_t)key);
     if (__builtin_expect(!!b, true)) {
         // Return the existing view.
@@ -97,6 +99,7 @@ uncilkify(global_state *g, __cilkrts_stack_frame *sf) {
 
 // Enter a new Cilk function, i.e., a function that contains a cilk_spawn.  This
 // function must be inlined for correctness.
+extern "C"
 __attribute__((always_inline)) void
 __cilkrts_enter_frame(__cilkrts_stack_frame *sf) {
     sf->flags = 0;
@@ -119,6 +122,7 @@ __cilkrts_enter_frame(__cilkrts_stack_frame *sf) {
 // This function initializes worker and stack_frame structures.  Because this
 // routine will always be executed by a Cilk worker, it is optimized compared to
 // its counterpart, __cilkrts_enter_frame.
+extern "C"
 __attribute__((always_inline)) void
 __cilkrts_enter_frame_helper(__cilkrts_stack_frame *sf,
                              __cilkrts_stack_frame *parent, bool spawner) {
@@ -135,6 +139,7 @@ __cilkrts_enter_frame_helper(__cilkrts_stack_frame *sf,
     }
 }
 
+extern "C"
 __attribute__((always_inline)) int
 __cilk_prepare_spawn(__cilkrts_stack_frame *sf) {
     sysdep_save_fp_ctrl_state(sf);
@@ -147,6 +152,7 @@ __cilk_prepare_spawn(__cilkrts_stack_frame *sf) {
 
 // Detach the given Cilk stack frame, allowing other Cilk workers to steal the
 // parent frame.
+extern "C"
 __attribute__((always_inline)) void
 __cilkrts_detach(__cilkrts_stack_frame *sf, __cilkrts_stack_frame *parent) {
     __cilkrts_worker *w = get_worker_from_stack(sf);
@@ -159,14 +165,13 @@ __cilkrts_detach(__cilkrts_stack_frame *sf, __cilkrts_stack_frame *parent) {
     }
 
     sf->flags |= CILK_FRAME_DETACHED;
-    struct __cilkrts_stack_frame **tail =
-        atomic_load_explicit(&w->tail, memory_order_relaxed);
+    struct __cilkrts_stack_frame **tail = w->tail.load(std::memory_order_relaxed);
     CILK_ASSERT((tail + 1) < w->ltq_limit);
 
     // store parent at *tail, and then increment tail
     *tail++ = parent;
     /* Release ordering ensures the two preceding stores are visible. */
-    atomic_store_explicit(&w->tail, tail, memory_order_release);
+    w->tail.store(tail, std::memory_order_release);
 }
 
 __attribute__((always_inline)) void __cilk_sync(__cilkrts_stack_frame *sf) {
@@ -189,6 +194,7 @@ __attribute__((always_inline)) void __cilk_sync(__cilkrts_stack_frame *sf) {
     }
 }
 
+extern "C"
 __attribute__((always_inline)) void
 __cilk_sync_nothrow(__cilkrts_stack_frame *sf) {
     if (sf->flags & CILK_FRAME_UNSYNCHED || USE_EXTENSION) {
@@ -274,14 +280,12 @@ __cilkrts_leave_frame_helper(__cilkrts_stack_frame *sf,
 
     CILK_ASSERT(sf->flags & CILK_FRAME_DETACHED);
 
-    __cilkrts_stack_frame **tail =
-            atomic_load_explicit(&w->tail, memory_order_relaxed);
+    __cilkrts_stack_frame **tail = w->tail.load(std::memory_order_relaxed);
     --tail;
     /* The store of tail must precede the load of exc in global order.  See
        comment in do_dekker_on. */
-    atomic_store_explicit(&w->tail, tail, memory_order_seq_cst);
-    __cilkrts_stack_frame **exc =
-            atomic_load_explicit(&w->exc, memory_order_seq_cst);
+    w->tail.store(tail, std::memory_order_seq_cst);
+    __cilkrts_stack_frame **exc = w->exc.load(std::memory_order_seq_cst);
     /* Currently no other modifications of flags are atomic so this one isn't
        either.  If the thief wins it may run in parallel with the clear of
        DETACHED.  Does it modify flags too? */
@@ -293,11 +297,13 @@ __cilkrts_leave_frame_helper(__cilkrts_stack_frame *sf,
     }
 }
 
+extern "C"
 __attribute__((always_inline)) void
 __cilk_parent_epilogue(__cilkrts_stack_frame *sf) {
     __cilkrts_leave_frame(sf);
 }
 
+extern "C"
 __attribute__((always_inline)) void
 __cilk_helper_epilogue(__cilkrts_stack_frame *sf, __cilkrts_stack_frame *parent,
                        bool spawner) {
@@ -344,14 +350,12 @@ __cilkrts_pause_frame(__cilkrts_stack_frame *sf, __cilkrts_stack_frame *parent,
             __cilkrts_extend_return_from_spawn(w, &w->extension);
             w->extension = parent->extension;
         }
-        __cilkrts_stack_frame **tail =
-            atomic_load_explicit(&w->tail, memory_order_relaxed);
+        __cilkrts_stack_frame **tail = w->tail.load(std::memory_order_relaxed);
         --tail;
         /* The store of tail must precede the load of exc in global order.
            See comment in do_dekker_on. */
-        atomic_store_explicit(&w->tail, tail, memory_order_seq_cst);
-        __cilkrts_stack_frame **exc =
-            atomic_load_explicit(&w->exc, memory_order_seq_cst);
+        w->tail.store(tail, std::memory_order_seq_cst);
+        __cilkrts_stack_frame **exc = w->exc.load(std::memory_order_seq_cst);
         /* Currently no other modifications of flags are atomic so this
            one isn't either.  If the thief wins it may run in parallel
            with the clear of DETACHED.  Does it modify flags too? */

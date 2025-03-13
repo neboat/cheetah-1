@@ -1,10 +1,6 @@
 #ifndef _CILK_INTERNAL_H
 #define _CILK_INTERNAL_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -23,6 +19,10 @@ extern "C" {
 #ifdef __SSE__
 #define CHEETAH_SAVE_MXCSR
 #endif
+#endif
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 struct global_state;

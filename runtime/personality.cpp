@@ -1,5 +1,5 @@
 #include <signal.h>
-#include <stdatomic.h>
+#include <atomic>
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
@@ -83,8 +83,9 @@ void reduce_exception_reducer(void *l, void *r) {
 // none exists.
 struct closure_exception *get_exception_reducer(__cilkrts_worker *w) {
     return (struct closure_exception *)internal_reducer_lookup(
-        w, &exception_reducer, sizeof(exception_reducer),
-        init_exception_reducer, reduce_exception_reducer);
+        w, static_cast<void *>(&exception_reducer), sizeof(exception_reducer),
+        reinterpret_cast<void *>(init_exception_reducer),
+        reinterpret_cast<void *>(reduce_exception_reducer));
 }
 
 // Try to get the current view of the exception-reducer state, but return NULL
@@ -92,7 +93,7 @@ struct closure_exception *get_exception_reducer(__cilkrts_worker *w) {
 struct closure_exception *
 get_exception_reducer_or_null(__cilkrts_worker *w) {
     void *key = (void *)(&exception_reducer);
-    struct local_hyper_table *table = get_local_hyper_table_or_null(w);
+    struct hyper_table *table = get_local_hyper_table_or_null(w);
     if (NULL == table)
         return NULL;
 
@@ -198,6 +199,7 @@ resume_from_last_frame(__cilkrts_worker *w, __cilkrts_stack_frame *sf,
     _Unwind_Resume(ue_header); // noreturn, although not marked as such
 }
 
+extern "C"
 _Unwind_Reason_Code __cilk_personality_internal(
     __personality_routine std_lib_personality, int version,
     _Unwind_Action actions, uint64_t exception_class,
