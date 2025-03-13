@@ -9,10 +9,9 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 
-__attribute__((nothrow))
 void __cilkrts_reducer_register(void *key, size_t size,
 				__cilk_identity_fn id,
-				__cilk_reduce_fn reduce) {
+				__cilk_reduce_fn reduce) noexcept {
     (void)size; // not currently used here, only in lookup
     (void)id; // not currently used here, only in lookup
 
@@ -25,22 +24,19 @@ void __cilkrts_reducer_register(void *key, size_t size,
     (void)success;
 }
 
-__attribute__((nothrow))
 void __cilkrts_reducer_register_32(void *key, uint32_t size,
                                    __cilk_identity_fn id,
-                                   __cilk_reduce_fn reduce) {
+                                   __cilk_reduce_fn reduce) noexcept {
     __cilkrts_reducer_register(key, size, id, reduce);
 }
 
-__attribute__((nothrow))
 void __cilkrts_reducer_register_64(void *key, uint64_t size,
                                    __cilk_identity_fn id,
-                                   __cilk_reduce_fn reduce) {
+                                   __cilk_reduce_fn reduce) noexcept {
     __cilkrts_reducer_register(key, size, id, reduce);
 }
 
-__attribute__((nothrow))
-void __cilkrts_reducer_unregister(void *key) {
+void __cilkrts_reducer_unregister(void *key) noexcept {
     struct hyper_table *table = get_hyper_table();
     bool success = remove_hyperobject(table, (uintptr_t)key);
     /* CILK_ASSERT(success && "Failed to unregister reducer."); */

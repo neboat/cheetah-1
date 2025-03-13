@@ -61,6 +61,6 @@ CHEETAH_INTERNAL void __cilk_pause_frame(__cilkrts_stack_frame *sf,
                                          char *exn, bool spawner);
 
 // Not marked as CHEETAH_API as it may be deprecated soon
-extern "C" unsigned __cilkrts_get_nworkers(void);
+extern "C" unsigned __cilkrts_get_nworkers(void) noexcept;
 
 #endif

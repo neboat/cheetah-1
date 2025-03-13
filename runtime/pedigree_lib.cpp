@@ -25,7 +25,7 @@ void __cilkrts_deinit_dprng(void) {
     }
 }
 
-void __cilkrts_init_dprng(void) {
+void __cilkrts_init_dprng(void) noexcept {
     // TODO: Disallow __cilkrts_init_dprng() from being called in parallel.
     if (!__pedigree_dprng_m_array) {
         __pedigree_dprng_m_array =
@@ -69,19 +69,19 @@ __attribute__((constructor)) void __pedigree_startup(void) {
 void __cilkrts_bump_worker_rank(void) __CILKRTS_NOTHROW { bump_worker_rank(); }
 
 // Set the seed for the dprand DPRNG.
-void __cilkrts_dprand_set_seed(uint64_t seed) {
+void __cilkrts_dprand_set_seed(uint64_t seed) noexcept {
     __pedigree_dprng_seed = seed;
     __cilkrts_init_dprng();
 }
 
 // Get the current value of the dprand DPRNG.
-uint64_t __cilkrts_get_dprand(void) {
+uint64_t __cilkrts_get_dprand(void) noexcept {
     __pedigree_frame *frame = bump_worker_rank();
     return __cilkrts_dprng_mix_mod_p(frame->dprng_dotproduct);
 }
 
 // Get the current pedigree, in the form of a pointer to its leaf node.
-__cilkrts_pedigree __cilkrts_get_pedigree(void) {
+__cilkrts_pedigree __cilkrts_get_pedigree(void) noexcept {
     __cilkrts_pedigree ret_ped;
     __pedigree_frame *frame = (__pedigree_frame *)(__cilkrts_get_extension());
     ret_ped.parent = &(frame->pedigree);

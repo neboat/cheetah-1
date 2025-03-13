@@ -29,7 +29,7 @@
 _Alignas(__cilkrts_stack_frame)
 size_t __cilkrts_stack_frame_align = __alignof__(__cilkrts_stack_frame);
 
-__attribute__((always_inline)) unsigned __cilkrts_get_nworkers(void) {
+__attribute__((always_inline)) unsigned __cilkrts_get_nworkers(void) noexcept {
     return __cilkrts_nproc;
 }
 

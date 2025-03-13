@@ -6,9 +6,7 @@
 struct __cilkrts_stack_frame;
 struct __cilkrts_worker;
 
-#ifdef __cplusplus
 extern "C" {
-#endif
 
 // Inserted at the entry of a spawning function that is not itself a spawn
 // helper.  Initializes the stack frame sf allocated for that function.
@@ -76,17 +74,15 @@ void __cilkrts_sync(struct __cilkrts_stack_frame *sf);
 
 void *__cilkrts_reducer_lookup(void *key, size_t size,
                                void *id, void *reduce);
-__attribute__((nothrow))
+
 void __cilkrts_reducer_register_32(void *key, uint32_t size,
                                    void (*id)(void *),
-                                   void (*reduce)(void *, void *));
-__attribute__((nothrow))
+                                   void (*reduce)(void *, void *)) noexcept;
+
 void __cilkrts_reducer_register_64(void *key, uint64_t size,
                                    void (*id)(void *),
-                                   void (*reduce)(void *, void *));
-__attribute__((nothrow))
-void __cilkrts_reducer_unregister(void *key);
+                                   void (*reduce)(void *, void *)) noexcept;
 
-#ifdef __cplusplus
+void __cilkrts_reducer_unregister(void *key) noexcept;
+
 }
-#endif
