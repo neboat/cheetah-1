@@ -3,7 +3,7 @@
 #include "hyperobject_base.h"
 #include "local-hypertable.h"
 #include "local-reducer-api.h"
-#include "compiler-api.h"
+#include "cilk2c_inlined.h"
 #include "rts-config.h"
 
 #pragma clang diagnostic push

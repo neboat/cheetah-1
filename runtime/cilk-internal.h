@@ -109,6 +109,24 @@ struct closure_exception {
     struct cilk_fiber *throwing_fiber;
 };
 
+// Reducer structure for handling exceptions thrown in parallel.
+extern struct closure_exception exception_reducer;
+// Init method for exception reducer.
+CHEETAH_INTERNAL void init_exception_reducer(void *v);
+// Reduce method for exception reducer.
+CHEETAH_INTERNAL void reduce_exception_reducer(void *l, void *r);
+// Retrieve the exception stored in the local view of the exception reducer.
+CHEETAH_INTERNAL struct closure_exception *
+get_exception_reducer(__cilkrts_worker *w);
+// Retrieve the exception stored in the local view of the exception reducer, or
+// NULL if there is no local view..
+CHEETAH_INTERNAL struct closure_exception *
+get_exception_reducer_or_null(__cilkrts_worker *w);
+// Free resources used for a local view of the exception reducer.  This method
+// does not deallocate the exception
+CHEETAH_INTERNAL void clear_exception_reducer(__cilkrts_worker *w,
+                                              struct closure_exception *exn_r);
+
 #ifdef __cplusplus
 }
 #endif

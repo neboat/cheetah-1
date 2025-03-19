@@ -8,6 +8,7 @@
 #include <cilk/cilk_api.h>
 
 #include "cilk-internal.h"
+#include "cilk2c_inlined.h"
 #include "cilk2c.h"
 #include "closure-type.h"
 #include "closure.h"

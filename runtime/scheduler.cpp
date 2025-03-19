@@ -236,7 +236,7 @@ static Closure *setup_call_parent_resumption(ReadyDeque *deques,
     return t;
 }
 
-void Cilk_set_return(__cilkrts_worker *const w) {
+void __cilkrts_set_return(__cilkrts_worker *const w) {
 
     Closure *t;
 
@@ -535,7 +535,7 @@ static Closure *return_value(__cilkrts_worker *const w, worker_id self,
  *   2. Someone invokes signal_immediate_exception with the closure currently
  *   running on the worker's deque.  This is only possible with abort.
  */
-void Cilk_exception_handler(__cilkrts_worker *w, char *exn) {
+void __cilkrts_exception_handler(__cilkrts_worker *w, char *exn) {
 
     Closure *t;
     worker_id self = w->self;

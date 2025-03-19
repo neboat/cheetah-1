@@ -2,13 +2,15 @@
 // This file contains the compiler-runtime ABI.  This file is compiled to LLVM
 // bitcode, which the compiler then includes and inlines when it compiles a Cilk
 // program.
+// This file is also linked into the runtime library for use by
+// the exception personality function.
 // =============================================================================
 
 #include <atomic>
 #include <unwind.h>
 
 #include "cilk-internal.h"
-#include "compiler-api.h"
+#include "cilk2c_inlined.h"
 #include "cilk2c.h"
 #include "debug.h"
 #include "fiber.h"
@@ -21,6 +23,10 @@
 
 #include "pedigree_ext.cpp"
 #include "worker.h"
+
+// Suppress -Wmissing-variable-declarations for this variable.
+_Alignas(__cilkrts_stack_frame)
+extern size_t __cilkrts_stack_frame_align;
 
 // This variable encodes the alignment of a __cilkrts_stack_frame, both in its
 // value and in its own alignment.  Because LLVM IR does not associate
@@ -98,7 +104,7 @@ uncilkify(global_state *g, __cilkrts_stack_frame *sf) {
 // Enter a new Cilk function, i.e., a function that contains a cilk_spawn.  This
 // function must be inlined for correctness.
 __attribute__((always_inline)) void
-__cilkrts_enter_frame(__cilkrts_stack_frame *sf) {
+__cilkrts_enter_frame(__cilkrts_stack_frame *sf) noexcept {
     sf->flags = 0;
     if (__cilkrts_need_to_cilkify) {
         cilkify(sf);
@@ -121,7 +127,8 @@ __cilkrts_enter_frame(__cilkrts_stack_frame *sf) {
 // its counterpart, __cilkrts_enter_frame.
 __attribute__((always_inline)) void
 __cilkrts_enter_frame_helper(__cilkrts_stack_frame *sf,
-                             __cilkrts_stack_frame *parent, bool spawner) {
+                             __cilkrts_stack_frame *parent, bool spawner)
+  noexcept {
     cilkrts_alert(CFRAME, "__cilkrts_enter_frame_helper %p", (void *)sf);
 
     sf->flags = 0;
@@ -136,7 +143,7 @@ __cilkrts_enter_frame_helper(__cilkrts_stack_frame *sf,
 }
 
 __attribute__((always_inline)) int
-__cilk_prepare_spawn(__cilkrts_stack_frame *sf) {
+__cilk_prepare_spawn(__cilkrts_stack_frame *sf) noexcept {
     sysdep_save_fp_ctrl_state(sf);
     int res = __builtin_setjmp(sf->ctx);
     if (res != 0) {
@@ -148,7 +155,8 @@ __cilk_prepare_spawn(__cilkrts_stack_frame *sf) {
 // Detach the given Cilk stack frame, allowing other Cilk workers to steal the
 // parent frame.
 __attribute__((always_inline)) void
-__cilkrts_detach(__cilkrts_stack_frame *sf, __cilkrts_stack_frame *parent) {
+__cilkrts_detach(__cilkrts_stack_frame *sf, __cilkrts_stack_frame *parent)
+  noexcept {
     __cilkrts_worker *w = get_worker_from_stack(sf);
     cilkrts_alert(CFRAME, "__cilkrts_detach %p", (void *)sf);
 
@@ -168,7 +176,8 @@ __cilkrts_detach(__cilkrts_stack_frame *sf, __cilkrts_stack_frame *parent) {
     w->tail.store(tail, std::memory_order_release);
 }
 
-__attribute__((always_inline)) void __cilk_sync(__cilkrts_stack_frame *sf) {
+__attribute__((always_inline)) void __cilk_sync(__cilkrts_stack_frame *sf)
+  noexcept {
     if (sf->flags & CILK_FRAME_UNSYNCHED || USE_EXTENSION) {
         if (sf->flags & CILK_FRAME_UNSYNCHED) {
             if (__builtin_setjmp(sf->ctx) == 0) {
@@ -237,16 +246,17 @@ __cilkrts_leave_frame(__cilkrts_stack_frame *sf) {
 
     CILK_ASSERT(!(flags & CILK_FRAME_DETACHED));
 
-    // A detached frame would never need to call Cilk_set_return, which performs
+    // A detached frame would never need to call set_return, which performs
     // the return protocol of a full frame back to its parent when the full
     // frame is called (not spawned).  A spawned full frame returning is done
-    // via a different protocol, which is triggered in Cilk_exception_handler.
+    // via a different protocol, which is triggered in
+    // __cilkrts_exception_handler.
     if (flags & CILK_FRAME_STOLEN) { // if this frame has a full frame
         cilkrts_alert(RETURN,
                       "__cilkrts_leave_frame parent is call_parent!");
         // leaving a full frame; need to get the full frame of its call
         // parent back onto the deque
-        Cilk_set_return(w);
+        __cilkrts_set_return(w);
         CILK_ASSERT(CHECK_CILK_FRAME_MAGIC(w->g, sf));
     }
 }
@@ -284,7 +294,7 @@ __cilkrts_leave_frame_helper(__cilkrts_stack_frame *sf,
        DETACHED.  Does it modify flags too? */
     sf->flags &= ~CILK_FRAME_DETACHED;
     if (__builtin_expect(exc > tail, false)) {
-        Cilk_exception_handler(w, NULL);
+        __cilkrts_exception_handler(w, NULL);
         // If Cilk_exception_handler returns this thread won the race and can
         // return to the parent function.
     }
@@ -352,8 +362,8 @@ __cilkrts_pause_frame(__cilkrts_stack_frame *sf, __cilkrts_stack_frame *parent,
            with the clear of DETACHED.  Does it modify flags too? */
         sf->flags &= ~CILK_FRAME_DETACHED;
         if (__builtin_expect(exc > tail, false)) {
-            Cilk_exception_handler(w, exn);
-            // If Cilk_exception_handler returns this thread won
+            __cilkrts_exception_handler(w, exn);
+            // If __cilkrts_exception_handler returns this thread won
             // the race and can return to the parent function.
         }
     }
@@ -380,7 +390,7 @@ __internal_preserve_stack_frame_type_helper(void) {
 ///
 ///     grainsize = min(2048, ceil(n / (8 * nworkers)))
 #define __cilkrts_grainsize_fn_impl(NAME, INT_T)                               \
-    __attribute__((always_inline,nothrow)) INT_T NAME(INT_T n) {               \
+    __attribute__((always_inline)) INT_T NAME(INT_T n) noexcept {              \
         INT_T small_loop_grainsize = n / (8 * __cilkrts_nproc);                \
         if (small_loop_grainsize <= 1)                                         \
             return 1;                                                          \
@@ -392,8 +402,8 @@ __internal_preserve_stack_frame_type_helper(void) {
 #define __cilkrts_grainsize_fn(SZ)                                             \
     __cilkrts_grainsize_fn_impl(__cilkrts_cilk_for_grainsize_##SZ, uint##SZ##_t)
 
-__attribute__((always_inline,nothrow)) uint8_t
-__cilkrts_cilk_for_grainsize_8(uint8_t n) {
+__attribute__((always_inline)) uint8_t
+__cilkrts_cilk_for_grainsize_8(uint8_t n) noexcept {
     uint8_t small_loop_grainsize = n / (8 * __cilkrts_nproc);
     if (small_loop_grainsize <= 1)
         return 1;
