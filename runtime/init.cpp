@@ -407,8 +407,6 @@ static void __cilkrts_start_workers(global_state *g) {
 // Stop the Cilk workers in g, for example, by joining their underlying
 // Pthreads.
 static void __cilkrts_stop_workers(global_state *g) {
-    /* CILK_ASSERT( */
-    /*     !atomic_load_explicit(&g->start_thieves, std::memory_order_acquire)); */
 
     // Set g->start and g->terminate, to allow the workers to exit their
     // outermost scheduling loop.
@@ -508,7 +506,7 @@ void __cilkrts_internal_invoke_cilkified_root(__cilkrts_stack_frame *sf) {
     g->root_closure_initialized = false;
 
     // Mark the root closure as ready
-    Closure_make_ready(g->root_closure);
+    g->root_closure->make_ready();
 
     // Setup the stack pointer to point at the root closure's fiber.
     g->orig_rsp = SP(sf);
@@ -523,8 +521,8 @@ void __cilkrts_internal_invoke_cilkified_root(__cilkrts_stack_frame *sf) {
     __cilkrts_set_stolen(sf);
 
     // Associate sf with this root closure
-    Closure_clear_frame(root_closure);
-    Closure_set_frame(root_closure, sf);
+    root_closure->clear_frame();
+    root_closure->set_frame(sf);
 
     // Now kick off execution of the Cilkified region by setting appropriate
     // flags.

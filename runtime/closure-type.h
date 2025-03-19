@@ -11,7 +11,7 @@
 // Forward declaration
 typedef struct Closure Closure;
 
-enum ClosureStatus {
+enum ClosureStatus : unsigned char {
     /* Closure.status == 0 is invalid */
     CLOSURE_RUNNING = 42,
     CLOSURE_SUSPENDED,
@@ -29,6 +29,11 @@ enum ClosureStatus {
 struct Closure {
     __cilkrts_stack_frame *frame; /* rest of the closure */
 
+    void clear_frame() { frame = nullptr; }
+    void set_frame(__cilkrts_stack_frame *sf) {
+        CILK_ASSERT(!frame);
+        frame = sf;
+    }
     struct cilk_fiber *fiber;
     struct cilk_fiber *fiber_child;
 
@@ -37,7 +42,7 @@ struct Closure {
 
     worker_id owner_ready_deque; /* debug only */
 
-    enum ClosureStatus status : 8; /* doubles as magic number */
+    enum ClosureStatus status; /* doubles as magic number */
     bool has_cilk_callee;
     bool exception_pending;
     unsigned int join_counter; /* number of outstanding spawned children */
@@ -79,6 +84,74 @@ struct Closure {
 
     std::atomic<worker_id> mutex_owner
       __attribute__((aligned(CILK_CACHE_LINE)));
+
+    bool has_children() const {
+        return (has_cilk_callee || join_counter != 0);
+    }
+
+    void set_status(enum ClosureStatus to) {
+        status = to;
+    }
+    void change_status(enum ClosureStatus from, enum ClosureStatus to) {
+        CILK_ASSERT(status == from);
+        (void)from; // unused if assertions disabled
+        status = to;
+    }
+
+    bool trylock(worker_id self) {
+        switch (status) {
+        case CLOSURE_RUNNING:
+        case CLOSURE_SUSPENDED:
+        case CLOSURE_RETURNING:
+        case CLOSURE_READY:
+            break;
+        default:
+            return false;
+        }
+        worker_id current_owner = mutex_owner.load(std::memory_order_relaxed);
+        if (current_owner != NO_WORKER)
+            return false;
+        return mutex_owner.compare_exchange_weak(current_owner, self,
+                                                 std::memory_order_acq_rel,
+                                                 std::memory_order_relaxed);
+    }
+
+    void make_ready() {
+        status = CLOSURE_READY;
+    }
+
+    const char *status_to_string() const {
+        switch (status) {
+        case CLOSURE_RUNNING:
+            return "running";
+        case CLOSURE_SUSPENDED:
+            return "suspended";
+        case CLOSURE_RETURNING:
+            return "returning";
+        case CLOSURE_READY:
+            return "ready";
+        case CLOSURE_PRE_INVALID:
+            return "pre-invalid";
+        case CLOSURE_POST_INVALID:
+            return "post-invalid";
+        default:
+            return "unknown";
+        }
+    }
+
+    Closure(__cilkrts_stack_frame *sf);
+    ~Closure();
+
+    // This method is used for sync.
+    void suspend(struct ReadyDeque *deques, worker_id self);
+    // This method is used for steal.
+    void suspend_victim(struct ReadyDeque *deques, worker_id thief,
+                        worker_id victim);
+
+    void add_callee(Closure *new_callee);
+    void remove_callee();
+    void add_child(worker_id self, Closure *child);
+    void remove_child(worker_id self, Closure *child);
 
 } __attribute__((aligned(CILK_CACHE_LINE)));
 

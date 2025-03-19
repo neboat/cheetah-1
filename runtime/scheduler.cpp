@@ -70,19 +70,10 @@ static unsigned int get_rand(unsigned int state) {
     return state >> 16;
 }
 
-static void worker_change_state(__cilkrts_worker *w,
-                                enum __cilkrts_worker_state s) {
+void local_state::change_state(enum __cilkrts_worker_state s) {
     /* TODO: Update statistics based on state change. */
-    CILK_ASSERT(w->l->state != s);
-    w->l->state = s;
-#if 0
-    /* This is a valuable assertion but there is no way to make it
-       work.  The reducer map is not moved out of the worker until
-       long after scheduler state has been entered.  */
-    if (s != WORKER_RUN) {
-	CILK_ASSERT(w->reducer_map == NULL);
-    }
-#endif
+    CILK_ASSERT(state != s);
+    state = s;
 }
 
 /***********************************************************
@@ -138,7 +129,7 @@ static void setup_for_execution(__cilkrts_worker *w, Closure *t) {
     cilkrts_alert(SCHED, "(setup_for_execution) closure %p", (void *)t);
     struct cilk_fiber *fh = t->fiber;
     fh->worker = w;
-    Closure_set_status(t, CLOSURE_RUNNING);
+    t->set_status(CLOSURE_RUNNING);
 
     __cilkrts_stack_frame **init = w->l->shadow_stack;
     w->head.store(init, std::memory_order_relaxed);
@@ -231,7 +222,7 @@ static Closure *setup_call_parent_resumption(ReadyDeque *deques,
     CILK_ASSERT_POINTER_EQUAL(w, __cilkrts_get_tls_worker());
     CILK_ASSERT_POINTER_EQUAL(w->head, w->tail);
 
-    Closure_change_status(t, CLOSURE_SUSPENDED, CLOSURE_RUNNING);
+    t->change_status(CLOSURE_SUSPENDED, CLOSURE_RUNNING);
 
     return t;
 }
@@ -249,7 +240,7 @@ void __cilkrts_set_return(__cilkrts_worker *const w) {
     Closure_lock(self, t);
 
     CILK_ASSERT(t->status == CLOSURE_RUNNING);
-    CILK_ASSERT(Closure_has_children(t) == 0);
+    CILK_ASSERT(!t->has_children());
 
     // all hyperobjects from child or right sibling must have been reduced
     CILK_ASSERT(t->child_ht == nullptr && t->right_ht == nullptr);
@@ -277,7 +268,7 @@ void __cilkrts_set_return(__cilkrts_worker *const w) {
         t->ext_fiber = NULL;
     }
 
-    Closure_remove_callee(call_parent);
+    call_parent->remove_callee();
     setup_call_parent_resumption(deques, w, self, call_parent);
     Closure_unlock(self, call_parent);
 
@@ -295,7 +286,7 @@ static Closure *provably_good_steal_maybe(__cilkrts_worker *const w,
     //               (void *)parent);
     CILK_ASSERT(!l->provably_good_steal);
 
-    if (!Closure_has_children(parent) && parent->status == CLOSURE_SUSPENDED) {
+    if (!parent->has_children() && parent->status == CLOSURE_SUSPENDED) {
         // cilkrts_alert(STEAL | ALERT_SYNC,
         //      "(provably_good_steal_maybe) completing a sync");
 
@@ -306,7 +297,7 @@ static Closure *provably_good_steal_maybe(__cilkrts_worker *const w,
 
         setup_for_sync(w, self, parent);
         CILK_ASSERT(parent->owner_ready_deque == NO_WORKER);
-        Closure_make_ready(parent);
+        parent->make_ready();
 
         cilkrts_alert(STEAL | ALERT_SYNC,
                       "(provably_good_steal_maybe) returned %p",
@@ -457,7 +448,7 @@ static Closure *Closure_return(__cilkrts_worker *const w, worker_id self,
         parent->frame->flags |= CILK_FRAME_EXCEPTION_PENDING;
     }
 
-    Closure_remove_child(self, parent, child); // unlink child from tree
+    parent->remove_child(self, child); // unlink child from tree
     // we have deposited our views and unlinked; we can quit now
     // invariant: we can only decide to quit when we see no more maps
     // from the right, we have deposited our own views, and unlink from
@@ -575,8 +566,8 @@ void __cilkrts_exception_handler(__cilkrts_worker *w, char *exn) {
         }
 
         if (t->status == CLOSURE_RUNNING) {
-            CILK_ASSERT(Closure_has_children(t) == 0);
-            Closure_set_status(t, CLOSURE_RETURNING);
+            CILK_ASSERT(!t->has_children());
+            t->set_status(CLOSURE_RETURNING);
         }
         w->l->returning = true;
 
@@ -638,7 +629,7 @@ static Closure *setup_call_parent_closure_helper(
 
     CILK_ASSERT(call_parent->fiber);
 
-    Closure_set_status(curr_cl, CLOSURE_SUSPENDED);
+    curr_cl->set_status(CLOSURE_SUSPENDED);
     curr_cl->fiber = call_parent->fiber;
 
     if (USE_EXTENSION) {
@@ -646,7 +637,7 @@ static Closure *setup_call_parent_closure_helper(
         curr_cl->ext_fiber = call_parent->ext_fiber;
     }
 
-    Closure_add_callee(call_parent, curr_cl);
+    call_parent->add_callee(curr_cl);
 
     return curr_cl;
 }
@@ -691,7 +682,7 @@ static void setup_closures_in_stacklet(__cilkrts_worker *const w,
         w, victim_w, youngest->call_parent, extension, oldest_cl);
 
     CILK_ASSERT(youngest_cl->fiber != oldest_cl->fiber);
-    Closure_add_callee(call_parent, youngest_cl);
+    call_parent->add_callee(youngest_cl);
 }
 
 /*
@@ -796,7 +787,7 @@ static Closure *promote_child(__cilkrts_stack_frame **head, ReadyDeque *deques,
                            __cilkrts_stolen(frame_to_steal->call_parent));
         CILK_ASSERT((frame_to_steal->flags & CILK_FRAME_LAST) == 0);
         __cilkrts_set_stolen(frame_to_steal);
-        Closure_set_frame(cl, frame_to_steal);
+        cl->set_frame(frame_to_steal);
         spawn_parent = cl;
     } else { // spawning a function and stacklet never gotten stolen before
         // cl->frame could either be NULL or some older frame (e.g.,
@@ -806,7 +797,7 @@ static Closure *promote_child(__cilkrts_stack_frame **head, ReadyDeque *deques,
         // the left-most frame (the one to be stolen and resume).
         spawn_parent = Closure_create(w, frame_to_steal);
         __cilkrts_set_stolen(frame_to_steal);
-        Closure_set_status(spawn_parent, CLOSURE_RUNNING);
+        spawn_parent->set_status(CLOSURE_RUNNING);
 
         // At this point, spawn_parent is a new Closure formally associated with
         // the stolen frame, frame_to_steal, meaning that spawn_parent->frame is
@@ -845,11 +836,11 @@ static Closure *promote_child(__cilkrts_stack_frame **head, ReadyDeque *deques,
         // frames below it, and a worker will be working on the bottommost of
         // those called frames.
 
-        Closure_add_callee(cl, spawn_parent);
+        cl->add_callee(spawn_parent);
         spawn_parent->call_parent = cl;
 
         // suspend cl & remove it from deque
-        Closure_suspend_victim(deques, self, pn, cl);
+        cl->suspend_victim(deques, self, pn);
         Closure_unlock(self, cl);
 
         Closure_lock(self, spawn_parent);
@@ -865,14 +856,14 @@ static Closure *promote_child(__cilkrts_stack_frame **head, ReadyDeque *deques,
     Closure *spawn_child = Closure_create(w, NULL);
 
     spawn_child->spawn_parent = spawn_parent;
-    Closure_set_status(spawn_child, CLOSURE_RUNNING);
+    spawn_child->set_status(CLOSURE_RUNNING);
 
     /***
      * Register this child, which sets up its sibling links.
      * We do this here instead of in finish_promote, because we must setup
      * the sib links for the new child before its pointer escapses.
      ***/
-    Closure_add_child(self, spawn_parent, spawn_child);
+    spawn_parent->add_child(self, spawn_child);
 
     ++spawn_parent->join_counter;
 
@@ -914,7 +905,7 @@ static void finish_promote(__cilkrts_worker *const w, worker_id self,
 
     __cilkrts_set_unsynced(parent->frame);
     /* Make the parent ready */
-    Closure_make_ready(parent);
+    parent->make_ready();
 
     return;
 }
@@ -1008,7 +999,7 @@ static Closure *Closure_steal(__cilkrts_worker **workers,
     cl = deque_peek_top(deques, w, self, victim);
 
     if (cl) {
-        if (Closure_trylock(self, cl) == 0) {
+        if (!cl->trylock(self)) {
             deque_unlock(deques, self, victim);
             return NULL;
         }
@@ -1065,7 +1056,7 @@ static Closure *Closure_steal(__cilkrts_worker **workers,
             // starting.
             if (cl != w->g->root_closure)
                 cilkrts_bug("Bug: %s closure in ready deque",
-                            Closure_status_to_str(cl->status));
+                            cl->status_to_string());
         }
     } else {
         deque_unlock(deques, self, victim);
@@ -1102,8 +1093,10 @@ void promote_own_deque(__cilkrts_worker *w) {
         CILK_ASSERT(cl);
         CILK_ASSERT(cl->status == CLOSURE_RUNNING);
 
-        if (Closure_trylock(self, cl) == 0) {
+        if (!cl->trylock(self)) {
             deque_unlock(deques, self, self);
+            // XXX Status is from compare_exchange_weaka
+            // which may spuriously fail.
             cilkrts_bug(
                 "Bug: failed to acquire deque lock when promoting own deque");
             return;
@@ -1121,7 +1114,7 @@ void promote_own_deque(__cilkrts_worker *w) {
             // ANGE: finish the promotion process in finish_promote
             finish_promote(w, self, w, res, has_frames_to_promote);
 
-            Closure_set_status(res, CLOSURE_SUSPENDED);
+            res->set_status(CLOSURE_SUSPENDED);
             Closure_unlock(self, res);
 
         } else {
@@ -1235,7 +1228,7 @@ int Cilk_sync(__cilkrts_worker *const w, __cilkrts_stack_frame *frame) {
     // when sync fails, the user_ht should remain NULL at this point.
     CILK_ASSERT_NULL(t->user_ht);
 
-    if (Closure_has_children(t)) {
+    if (t->has_children()) {
         cilkrts_alert(SYNC, "(Cilk_sync) Closure %p has outstanding children",
                       (void *)t);
         if (t->fiber) {
@@ -1253,7 +1246,7 @@ int Cilk_sync(__cilkrts_worker *const w, __cilkrts_stack_frame *frame) {
         hyper_table *ht = w->hyper_table;
         w->hyper_table = NULL;
 
-        Closure_suspend(deques, self, t);
+        t->suspend(deques, self);
         t->user_ht = ht; /* set this after state change to suspended */
         res = SYNC_NOT_READY;
     } else {
@@ -1318,7 +1311,7 @@ static void do_what_it_says(ReadyDeque *deques, __cilkrts_worker *w,
             // longjmp invalidates non-volatile variables
             __cilkrts_worker *volatile w_save = w;
             if (__builtin_setjmp(l->rts_ctx) == 0) {
-                worker_change_state(w, WORKER_RUN);
+                w->l->change_state(WORKER_RUN);
                 longjmp_to_user_code(w, t);
             } else {
                 w = w_save;
@@ -1327,7 +1320,7 @@ static void do_what_it_says(ReadyDeque *deques, __cilkrts_worker *w,
                 __cilkrts_current_fh = NULL;
                 CILK_ASSERT_POINTER_EQUAL(w, __cilkrts_get_tls_worker());
                 sanitizer_finish_switch_fiber();
-                worker_change_state(w, WORKER_SCHED);
+                w->l->change_state(WORKER_SCHED);
 
                 // If this worker finished the cilkified region, mark the
                 // computation as no longer cilkified, to signal the thread that
@@ -1363,7 +1356,7 @@ static void do_what_it_says(ReadyDeque *deques, __cilkrts_worker *w,
 
         default:
             cilkrts_bug("do_what_it_says() invalid closure status: %s",
-                        Closure_status_to_str(t->status));
+                        t->status_to_string());
             break;
         }
         if (t) {
@@ -1388,7 +1381,7 @@ void do_what_it_says_boss(__cilkrts_worker *w, Closure *t) {
     // thief itself, the boss wakes up the root worker to become a thief.
 
     CILK_STOP_TIMING(w, INTERVAL_SCHED);
-    worker_change_state(w, WORKER_IDLE);
+    w->l->change_state(WORKER_IDLE);
     boss_scheduler(w);
 }
 
@@ -1396,7 +1389,7 @@ static inline void boss_scheduler(__cilkrts_worker *w) {
     global_state *const rts = w->g;
 
     CILK_START_TIMING(w, INTERVAL_SCHED);
-    worker_change_state(w, WORKER_SCHED);
+    w->l->change_state(WORKER_SCHED);
 
     history_t history = {
         .inefficient_history = 0,
@@ -1414,13 +1407,13 @@ static inline void boss_scheduler(__cilkrts_worker *w) {
     reset_fails(rts, history.fails);
 #endif
     CILK_STOP_TIMING(w, INTERVAL_SCHED);
-    worker_change_state(w, WORKER_IDLE);
+    w->l->change_state(WORKER_IDLE);
     __builtin_longjmp(rts->boss_ctx, 1);
 }
 
 static inline void non_boss_scheduler(__cilkrts_worker *w) {
     CILK_START_TIMING(w, INTERVAL_SCHED);
-    worker_change_state(w, WORKER_SCHED);
+    w->l->change_state(WORKER_SCHED);
     global_state *const rts = w->g;
     history_t history = {
         .inefficient_history = 0,
@@ -1453,7 +1446,7 @@ static inline void non_boss_scheduler(__cilkrts_worker *w) {
 #endif
 
     CILK_STOP_TIMING(w, INTERVAL_SCHED);
-    worker_change_state(w, WORKER_IDLE);
+    w->l->change_state(WORKER_IDLE);
 }
 
 void worker_scheduler(__cilkrts_worker *w, history_t *const history) {
@@ -1714,4 +1707,164 @@ void *scheduler_thread_proc(void *arg) {
 
         CILK_START_TIMING(w, INTERVAL_SLEEP_UNCILK);
     } while (true);
+}
+
+Closure::Closure(__cilkrts_stack_frame *frame)
+    : frame(frame),
+      fiber(nullptr),
+      fiber_child(nullptr),
+      ext_fiber(nullptr),
+      ext_fiber_child(nullptr),
+      owner_ready_deque(NO_WORKER),
+      status(CLOSURE_PRE_INVALID),
+      has_cilk_callee(false),
+      exception_pending(false),
+      join_counter(0),
+      orig_rsp(nullptr),
+      callee(nullptr),
+      call_parent(nullptr),
+      spawn_parent(nullptr),
+      left_sib(nullptr),
+      right_sib(nullptr),
+      right_most_child(nullptr),
+      next_ready(nullptr),
+      prev_ready(nullptr),
+      right_ht(nullptr),
+      child_ht(nullptr),
+      user_ht(nullptr),
+      mutex_owner(NO_WORKER)
+{
+}
+
+Closure::~Closure()
+{
+    Closure_checkmagic(this);
+
+    // sanity checks
+    CILK_ASSERT_NULL(left_sib);
+    CILK_ASSERT_NULL(right_sib);
+    CILK_ASSERT_NULL(right_most_child);
+
+    CILK_ASSERT_NULL(user_ht);
+    CILK_ASSERT_NULL(child_ht);
+    CILK_ASSERT_NULL(right_ht);
+
+    status = CLOSURE_POST_INVALID;
+}
+
+void Closure::suspend(struct ReadyDeque *deques, worker_id self) {
+
+    cilkrts_alert(SCHED, "Closure_suspend %p", (void *)this);
+
+    Closure_checkmagic(this);
+    Closure_assert_ownership(self, this);
+    deque_assert_ownership(deques, self, self);
+
+    CILK_ASSERT(frame != nullptr);
+    CILK_ASSERT(__cilkrts_stolen(frame));
+
+    change_status(CLOSURE_RUNNING, CLOSURE_SUSPENDED);
+
+    Closure *cl1 = deque_xtract_bottom(deques, self, self);
+
+    CILK_ASSERT_POINTER_EQUAL(this, cl1);
+    USE_UNUSED(cl1);
+}
+
+void Closure::suspend_victim(struct ReadyDeque *deques,
+                             worker_id thief_id,
+                             worker_id victim_id) {
+
+    Closure_checkmagic(this);
+    Closure_assert_ownership(thief_id, this);
+    deque_assert_ownership(deques, thief_id, victim_id);
+
+    change_status(CLOSURE_RUNNING, CLOSURE_SUSPENDED);
+
+    Closure *cl1 = deque_xtract_bottom(deques, thief_id, victim_id);
+    CILK_ASSERT_POINTER_EQUAL(this, cl1);
+    USE_UNUSED(cl1);
+}
+
+void Closure::remove_callee() {
+
+    // A child is not double linked with siblings if it is called
+    // so there is no need to unlink it.
+    CILK_ASSERT(status == CLOSURE_SUSPENDED);
+    CILK_ASSERT(has_cilk_callee);
+    has_cilk_callee = false;
+    callee = nullptr;
+}
+
+void Closure::add_callee(Closure *new_callee) {
+    // ANGE: instead of checking has_cilk_callee, we just check if callee is
+    // NULL, because we might have set the has_cilk_callee in
+    // Closure_add_tmp_callee to prevent the closure from being resumed.
+    CILK_ASSERT_NULL(callee);
+    CILK_ASSERT_NULL(new_callee->spawn_parent);
+    CILK_ASSERT((new_callee->frame->flags & CILK_FRAME_DETACHED) == 0);
+
+    new_callee->call_parent = this;
+    callee = new_callee;
+    has_cilk_callee = true;
+}
+
+/***
+ * Remove the child from the closure tree.
+ * At this point we should already have reduced all views that this
+ * child has.  We need to unlink it from its left/right sibling, and reset
+ * the right most child pointer in parent if this child is currently the
+ * right most child.
+ *
+ * Note that we need locks both on the parent and the child.
+ * We always hold lock on the parent when unlinking a child, so only one
+ * child gets unlinked at a time, and one child gets to modify the steal
+ * tree at a time.
+ ***/
+void Closure::remove_child(worker_id self, Closure *child) {
+    (void)self; // unused if assertions disabled
+
+    CILK_ASSERT(child);
+    CILK_ASSERT_POINTER_EQUAL(this, child->spawn_parent);
+
+    Closure_assert_ownership(self, this);
+    Closure_assert_ownership(self, child);
+
+    if (child == right_most_child) {
+        CILK_ASSERT_NULL(child->right_sib);
+        right_most_child = child->left_sib;
+    }
+
+    CILK_ASSERT_NULL(child->right_ht);
+
+    unlink_child(child);
+}
+
+/***
+ * Only the scheduler is allowed to alter the closure tree.
+ * Consequently, these operations are private.
+ *
+ * Insert the newly created child into the closure tree.
+ * The child closure is newly created, which makes it the new right
+ * most child of parent.  Setup the left/right sibling for this new
+ * child, and reset the parent's right most child pointer.
+ *
+ * Note that we don't need locks on the children to double link them.
+ * The old right most child will not follow its right_sib link until
+ * it's ready to return, and it needs lock on the parent to do so, which
+ * we are holding.  The pointer to new right most child is not visible
+ * to anyone yet, so we don't need to lock that, either.
+ ***/
+void Closure::add_child(worker_id self, Closure *child) {
+    (void)self; // unused if assertions disabled
+
+    /* ANGE: w must have the lock on parent */
+    Closure_assert_ownership(self, this);
+    /* ANGE: w must NOT have the lock on child */
+    Closure_assert_alienation(self, child);
+
+    // setup sib links between parent's right most child and the new child
+    double_link_children(right_most_child, child);
+    // now the new child becomes the right most child
+    right_most_child = child;
 }

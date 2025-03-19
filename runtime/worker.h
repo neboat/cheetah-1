@@ -10,13 +10,6 @@ struct local_state;
 struct global_state;
 struct hyper_table;
 
-enum __cilkrts_worker_state {
-    WORKER_IDLE = 10,
-    WORKER_SCHED,
-    WORKER_STEAL,
-    WORKER_RUN
-};
-
 struct __cilkrts_worker {
     // Worker id, a small integer
     worker_id self;
