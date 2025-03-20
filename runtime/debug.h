@@ -81,7 +81,7 @@ cilkrts_alert(int lvl, const char *fmt, ...);
 #define WHEN_CILK_DEBUG(ex) ex
 
 /** Standard text for failed assertion */
-CHEETAH_INTERNAL extern const char *const __cilkrts_assertion_failed;
+CHEETAH_INTERNAL extern const char __cilkrts_assertion_failed[];
 
 #define CILK_ASSERT(ex)                                                        \
     (__builtin_expect((ex) != 0, 1)                                            \

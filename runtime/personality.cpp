@@ -143,7 +143,7 @@ sync_in_personality(__cilkrts_worker *w, __cilkrts_stack_frame *sf,
         exn_r->parent_rsp = t->orig_rsp;
         t->orig_rsp = (char *)SP(sf);
 
-        Closure_unlock(self, t);
+        t->unlock(self);
         deque_unlock_self(deques, self);
 
         // save the current fiber for further stack unwinding.

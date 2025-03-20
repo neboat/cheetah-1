@@ -26,7 +26,9 @@ enum ClosureStatus : unsigned char {
  * the children themselves, in order to avoid extra protocols
  * and locking.
  */
-struct Closure {
+struct
+  __attribute((visibility("hidden")))
+Closure {
     __cilkrts_stack_frame *frame; /* rest of the closure */
 
     void clear_frame() { frame = nullptr; }
@@ -98,49 +100,23 @@ struct Closure {
         status = to;
     }
 
-    bool trylock(worker_id self) {
-        switch (status) {
-        case CLOSURE_RUNNING:
-        case CLOSURE_SUSPENDED:
-        case CLOSURE_RETURNING:
-        case CLOSURE_READY:
-            break;
-        default:
-            return false;
-        }
-        worker_id current_owner = mutex_owner.load(std::memory_order_relaxed);
-        if (current_owner != NO_WORKER)
-            return false;
-        return mutex_owner.compare_exchange_weak(current_owner, self,
-                                                 std::memory_order_acq_rel,
-                                                 std::memory_order_relaxed);
-    }
+    bool trylock(worker_id self);
 
     void make_ready() {
         status = CLOSURE_READY;
     }
 
-    const char *status_to_string() const {
-        switch (status) {
-        case CLOSURE_RUNNING:
-            return "running";
-        case CLOSURE_SUSPENDED:
-            return "suspended";
-        case CLOSURE_RETURNING:
-            return "returning";
-        case CLOSURE_READY:
-            return "ready";
-        case CLOSURE_PRE_INVALID:
-            return "pre-invalid";
-        case CLOSURE_POST_INVALID:
-            return "post-invalid";
-        default:
-            return "unknown";
-        }
-    }
+    const char *status_to_string() const;
 
     Closure(__cilkrts_stack_frame *sf);
     ~Closure();
+
+    void lock(worker_id self);
+    void unlock(worker_id self);
+
+    static Closure *create(struct __cilkrts_worker *, __cilkrts_stack_frame *);
+    static void destroy(Closure *, struct __cilkrts_worker *);
+    static void destroy(Closure *, struct global_state *);
 
     // This method is used for sync.
     void suspend(struct ReadyDeque *deques, worker_id self);
@@ -152,6 +128,14 @@ struct Closure {
     void remove_callee();
     void add_child(worker_id self, Closure *child);
     void remove_child(worker_id self, Closure *child);
+
+    void assert_ownership(worker_id self);
+    void assert_alienation(worker_id self);
+    void checkmagic();
+
+private:
+    static void double_link_children(Closure *left, Closure *right);
+    void unlink_child();
 
 } __attribute__((aligned(CILK_CACHE_LINE)));
 

@@ -374,7 +374,7 @@ global_state *__cilkrts_startup(int argc, char *argv[]) {
     // Create the root closure and a fiber to go with it.  Use worker 0 to
     // allocate the closure and fiber.
     __cilkrts_worker *w0 = g->workers[0];
-    Closure *t = Closure_create(w0, NULL);
+    Closure *t = Closure::create(w0, nullptr);
     struct cilk_fiber *fiber = cilk_fiber_allocate(g->options.stacksize);
     t->fiber = fiber;
     g->root_closure = t;
@@ -745,7 +745,7 @@ CHEETAH_INTERNAL void __cilkrts_shutdown(global_state *g) {
     cilk_fiber_deallocate_global(g, g->root_closure->fiber);
     if (USE_EXTENSION)
         cilk_fiber_deallocate_global(g, g->root_closure->ext_fiber);
-    Closure_destroy_global(g, g->root_closure);
+    Closure::destroy(g->root_closure, g);
 
     // Cleanup the global state
     workers_terminate(g);
