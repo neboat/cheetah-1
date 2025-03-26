@@ -43,6 +43,7 @@ __attribute__((always_inline)) static inline void busy_pause(void) {
 // Routines to control the cilkified state.
 
 static inline void set_cilkified(global_state *g) {
+    record_event(g, scheduler_event::CILKIFY, 0, NO_WORKER);
     // Set g->cilkified = true, indicating that the execution is now cilkified.
     g->cilkified.store(true, std::memory_order_release);
 }
@@ -50,6 +51,7 @@ static inline void set_cilkified(global_state *g) {
 // Mark the computation as no longer cilkified and signal the thread that
 // originally cilkified the execution.
 static inline void signal_uncilkified(global_state *g) {
+    record_event(g, scheduler_event::UNCILKIFY, 0, NO_WORKER);
     g->cilkified.store(false, std::memory_order_release);
     g->cilkified.notify_all();
 }
@@ -64,6 +66,7 @@ static inline void wait_while_cilkified(global_state *g) {
         }
         busy_pause();
     }
+    record_event(g, scheduler_event::WAIT_CILKIFIED, 0, NO_WORKER);
     while (g->cilkified.load(std::memory_order_acquire)) {
         g->cilkified.wait(true);
     }
@@ -79,7 +82,8 @@ static inline void reset_disengaged_var(global_state *g) {
 }
 
 // Request to reengage `count` thief threads.
-static inline void request_more_thieves(global_state *g, uint32_t count) {
+static inline void request_more_thieves(global_state *g, worker_id self,
+                                        uint32_t count) {
     CILK_ASSERT(count > 0);
 
     // Don't allow this routine increment the futex beyond half the number of
@@ -102,6 +106,7 @@ static inline void request_more_thieves(global_state *g, uint32_t count) {
         if (g->disengaged_thieves.compare_exchange_strong(
                 disengaged_thieves, disengaged_thieves + to_wake,
                 std::memory_order_release, std::memory_order_relaxed)) {
+            record_event(g, scheduler_event::MORE_THIEVES, to_wake, self);
             // We successfully updated the futex.  Wake the thief threads
             // waiting on this futex.
             switch (to_wake) {
@@ -123,7 +128,7 @@ static inline void request_more_thieves(global_state *g, uint32_t count) {
     }
 }
 
-static inline uint32_t thief_disengage(global_state *g) {
+static inline uint32_t thief_disengage(global_state *g, worker_id self) {
 
     // This step synchronizes with calls to request_more_thieves.
     while (true) {
@@ -138,13 +143,14 @@ static inline uint32_t thief_disengage(global_state *g) {
             }
             busy_loop_pause();
         }
-
+        record_event(g, scheduler_event::WAIT_DISENGAGED, 0, self);
         g->disengaged_thieves.wait(0, std::memory_order_relaxed);
     }
 }
 
 // Signal to all disengaged thief threads to resume work-stealing.
 static inline void wake_all_disengaged(global_state *g) {
+    record_event(g, scheduler_event::ALL_THIEVES, 0, NO_WORKER);
     g->disengaged_thieves.store(INT_MAX, std::memory_order_release);
     g->disengaged_thieves.notify_all();
 }
@@ -157,8 +163,8 @@ static inline void sleep_thieves(global_state *g) {
 
 // Called by a thief thread.  Causes the thief thread to wait for a signal to
 // start work-stealing.
-static inline uint32_t thief_wait(global_state *g) {
-    return thief_disengage(g);
+static inline uint32_t thief_wait(global_state *g, worker_id self) {
+    return thief_disengage(g, self);
 }
 
 // Called by a thief thread.  Check if the thief should start waiting for the
@@ -180,6 +186,7 @@ static inline bool thief_should_wait(global_state *g) {
 // Signal the thief threads to start work-stealing (or terminate, if
 // g->terminate == 1).
 static inline void wake_thieves(global_state *g) {
+    record_event(g, scheduler_event::ALL_THIEVES, 0, NO_WORKER);
     g->disengaged_thieves.store(g->nworkers - 1, std::memory_order_release);
     g->disengaged_thieves.notify_all();
 }

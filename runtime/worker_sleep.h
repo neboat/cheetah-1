@@ -146,7 +146,7 @@ static bool try_to_disengage_thief(global_state *g, worker_id self,
         cilk_mutex_unlock(&g->index_lock);
 
         // Disengage this thread.
-        thief_disengage(g);
+        thief_disengage(g, self);
 
         // The thread is now reengaged.  Grab the lock on the index structure.
         cilk_mutex_lock(&g->index_lock);
@@ -311,7 +311,7 @@ maybe_reengage_workers(global_state *const rts, worker_id self,
         }
 
         if (request > 0) {
-            request_more_thieves(rts, request);
+            request_more_thieves(rts, self, request);
         }
 
         // Set a cap on the fail count.

@@ -59,6 +59,10 @@ static global_state *global_state_allocate() {
 
     g->cilkified.store(false, std::memory_order_relaxed);
 
+#ifdef __amd64__ // really, if __builtin_readcyclecounter is usable
+    g->start_time = __builtin_readcyclecounter();
+#endif
+
     return g;
 }
 
@@ -196,4 +200,15 @@ void for_each_worker_rev(global_state *g,
     while (i-- > 0)
         if (worker_is_valid(g->workers[i], g))
             fn(g->workers[i], data);
+}
+
+void record_event(global_state *g, scheduler_event::event code,
+                  int data, worker_id self) {
+#ifdef __amd64__ // really, if __builtin_readcyclecounter is fast
+    struct scheduler_event *event = &g->events[g->event_index++ % 1024];
+    event->time = __builtin_readcyclecounter();
+    event->code = code;
+    event->data = data;
+    event->worker = self;
+#endif
 }

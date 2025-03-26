@@ -1684,7 +1684,7 @@ void *scheduler_thread_proc(void *arg) {
         // seems to result in better performance.
         if (thief_should_wait(rts)) {
             disengage_worker(rts, nworkers, self);
-            l->wake_val = thief_wait(rts);
+            l->wake_val = thief_wait(rts, self);
             reengage_worker(rts, nworkers, self);
         }
         CILK_STOP_TIMING(w, INTERVAL_SLEEP_UNCILK);

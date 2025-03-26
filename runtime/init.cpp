@@ -634,10 +634,54 @@ void __cilkrts_internal_exit_cilkified_root(global_state *g,
     }
 }
 
+static const char *event_code(scheduler_event::event code) {
+    switch (code) {
+    case scheduler_event:: CILKIFY:
+        return "cilkify";
+    case scheduler_event:: UNCILKIFY:
+        return "uncilkify";
+    case scheduler_event:: WAIT_CILKIFIED:
+        return "wait_cilkified";
+    case scheduler_event:: WAIT_DISENGAGED:
+        return "wait_disengaged";
+    case scheduler_event:: MORE_THIEVES:
+        return "more_thieves";
+    case scheduler_event:: ALL_THIEVES:
+        return "all_thieves";
+    default:
+        return "?";
+    }
+}
+
+static void print_events(global_state *g) {
+    if (!(debug_level & DEBUG_DISENGAGE))
+        return;
+    size_t count = g->event_index;
+    if (count == 0)
+        return;
+    if (count > sizeof g->events / sizeof g->events[0])
+        count = sizeof g->events / sizeof g->events[0];
+    uint64_t start = g->start_time;
+    for (size_t i = 0; i < count; ++i) {
+        const char *code_s = event_code(g->events[i].code);
+        worker_id w = g->events[i].worker;
+        uint64_t t = g->events[i].time - start;
+        unsigned long us = (unsigned long)(t / 1000);
+        unsigned int ns = (unsigned int)(t % 1000);
+        if (w == NO_WORKER)
+            printf("%11lu.%03u %20s --- %d\n", us, ns,
+                   code_s, g->events[i].data);
+        else
+            printf("%11lu.%03u %20s %3u %d\n", us, ns,
+                   code_s, (unsigned int)w, g->events[i].data);
+    }
+}
+
 static void global_state_terminate(global_state *g) {
     cilk_fiber_pool_global_terminate(g); /* before malloc terminate */
     cilk_internal_malloc_global_terminate(g);
     cilk_sched_stats_print(g);
+    print_events(g);
 }
 
 static void global_state_deinit(global_state *g) {

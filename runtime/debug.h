@@ -43,10 +43,11 @@ extern CHEETAH_INTERNAL unsigned int alert_level;
 #define DEBUG_LVL 0xff
 #endif
 
-#define DEBUG_MEMORY 0x01
+#define DEBUG_MEMORY      0x01
 #define DEBUG_MEMORY_SLOW 0x02
-#define DEBUG_FIBER 0x04
-#define DEBUG_REDUCER 0x08
+#define DEBUG_FIBER       0x04
+#define DEBUG_REDUCER     0x08
+#define DEBUG_DISENGAGE   0x10
 extern CHEETAH_INTERNAL unsigned int debug_level;
 #define DEBUG_ENABLED(flag) (debug_level & (DEBUG_LVL & DEBUG_##flag))
 #define DEBUG_ENABLED_STATIC(flag) (DEBUG_LVL & DEBUG_##flag)

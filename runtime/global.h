@@ -43,6 +43,20 @@ struct worker_args {
     global_state *g;
 };
 
+struct scheduler_event {
+    uint64_t time;
+    enum event : unsigned short {
+        CILKIFY,
+        UNCILKIFY,
+        WAIT_CILKIFIED,
+        WAIT_DISENGAGED,
+        MORE_THIEVES,
+        ALL_THIEVES,
+    } code;
+    int data;
+    worker_id worker;
+};
+
 struct global_state {
     /* globally-visible options (read-only after init) */
     struct rts_options options;
@@ -102,7 +116,16 @@ struct global_state {
     struct __cilkrts_worker dummy_worker;
 
     struct global_sched_stats stats;
+
+    uint64_t start_time;
+
+    _Atomic size_t event_index;
+
+    struct scheduler_event events[1024];
 };
+
+CHEETAH_INTERNAL void record_event(global_state *, scheduler_event::event,
+                                   int, worker_id);
 
 CHEETAH_INTERNAL extern global_state *default_cilkrts;
 CHEETAH_INTERNAL extern __cilkrts_worker default_worker;
