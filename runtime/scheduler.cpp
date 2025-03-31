@@ -1737,7 +1737,18 @@ Closure::Closure(__cilkrts_stack_frame *frame)
 
 Closure::~Closure()
 {
-    checkmagic();
+    switch (status) {
+    case CLOSURE_PRE_INVALID:
+    case CLOSURE_RUNNING:
+    case CLOSURE_SUSPENDED:
+    case CLOSURE_RETURNING:
+    case CLOSURE_READY:
+    case CLOSURE_POST_INVALID:
+        break;
+    default:
+        CILK_ABORT("invalid closure");
+        break;
+    }
 
     // sanity checks
     CILK_ASSERT_NULL(left_sib);
@@ -1747,6 +1758,10 @@ Closure::~Closure()
     CILK_ASSERT_NULL(user_ht);
     CILK_ASSERT_NULL(child_ht);
     CILK_ASSERT_NULL(right_ht);
+
+#if CILK_DEBUG
+    memset(this, 0xbf, sizeof *this);
+#endif
 
     status = CLOSURE_POST_INVALID;
 }
