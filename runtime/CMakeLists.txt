@@ -70,12 +70,20 @@ set(CHEETAH_DEBUG_OPTIONS -Og)
 set(CHEETAH_RELEASE_OPTIONS -O3)
 
 # Setup flags and defs for cheetah bitcode ABI build
-set(CHEETAH_BITCODE_ABI_COMPILE_FLAGS ${CHEETAH_COMPILE_FLAGS} -emit-llvm)
+# Disable exceptions.  Inlining functions with personalities
+# or calls to terminate from bitcode does not work.
+set(CHEETAH_BITCODE_ABI_COMPILE_FLAGS ${CHEETAH_COMPILE_FLAGS}
+  -fno-exceptions -emit-llvm)
 set(CHEETAH_BITCODE_ABI_COMPILE_DEFS ${CHEETAH_COMPILE_DEFS}
   "CHEETAH_API_CONSUMER=1"
   "CHEETAH_INTERNAL="
-  "CHEETAH_INTERNAL_NORETURN=__attribute__((noreturn))"
+  "CHEETAH_INTERNAL_NORETURN=__attribute__((noreturn,nothrow))"
   "CILK_DEBUG=0")
+
+set(CHEETAH_PERSONALITY_COMPILE_DEFS ${CHEETAH_COMPILE_DEFS}
+  "CHEETAH_API_CONSUMER=1"
+  "CHEETAH_INTERNAL="
+  "CHEETAH_INTERNAL_NORETURN=__attribute__((noreturn,nothrow))")
 
 # Set compile flags, compile defs, and link flags for ASan build
 set(CHEETAH_ASAN_COMPILE_FLAGS ${CHEETAH_COMPILE_FLAGS})
