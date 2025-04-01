@@ -194,6 +194,7 @@ void set_debug_level(unsigned int level) { debug_level = level; }
 extern const char __cilkrts_assertion_failed[] =
     "%s:%d: cilk assertion failed: %s\n";
 
+CHEETAH_INTERNAL_NORETURN
 void cilk_die_internal(struct global_state *const g, const char *fmt, ...) {
     fflush(stdout);
     va_list l;

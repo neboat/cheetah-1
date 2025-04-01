@@ -1185,7 +1185,7 @@ void longjmp_to_user_code(__cilkrts_worker *w, Closure *t) {
     sysdep_longjmp_to_sf(sf);
 }
 
-__attribute__((noreturn)) void longjmp_to_runtime(__cilkrts_worker *w) {
+CHEETAH_INTERNAL_NORETURN void longjmp_to_runtime(__cilkrts_worker *w) {
     cilkrts_alert(SCHED | ALERT_FIBER, "(longjmp_to_runtime)");
 
     CILK_SWITCH_TIMING(w, INTERVAL_WORK, INTERVAL_SCHED);
