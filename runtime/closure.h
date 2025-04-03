@@ -1,47 +1,142 @@
-#ifndef _CLOSURE_H
-#define _CLOSURE_H
+#ifndef _CLOSURE_TYPE_H
+#define _CLOSURE_TYPE_H
 
 #include <atomic>
-#include <new>
-#include "debug.h"
 
 #include "cilk-internal.h"
 #include "fiber.h"
+#include "local-hypertable.h"
 #include "mutex.h"
 
-#include "closure-type.h"
+// Forward declaration
+typedef struct Closure Closure;
 
-#include "cilk2c.h"
-#include "global.h"
-#include "internal-malloc.h"
-#include "readydeque.h"
+enum ClosureStatus : unsigned char {
+    /* Closure.status == 0 is invalid */
+    CLOSURE_RUNNING = 42,
+    CLOSURE_SUSPENDED,
+    CLOSURE_RETURNING,
+    CLOSURE_READY,
+    CLOSURE_PRE_INVALID, /* before first real use */
+    CLOSURE_POST_INVALID /* after destruction */
+};
 
-static inline void Closure_lock(worker_id self, Closure *t) {
-    t->checkmagic();
-    while (true) {
-        worker_id current_owner =
-            t->mutex_owner.load(std::memory_order_relaxed);
-        if ((current_owner == NO_WORKER) &&
-            t->mutex_owner.compare_exchange_weak(
-                current_owner, self, std::memory_order_acq_rel,
-                std::memory_order_relaxed))
-            break;
-        busy_loop_pause();
+/*
+ * the list of children is not distributed among
+ * the children themselves, in order to avoid extra protocols
+ * and locking.
+ */
+struct
+  __attribute((visibility("hidden")))
+Closure {
+    __cilkrts_stack_frame *frame; /* rest of the closure */
+
+    void clear_frame() { frame = nullptr; }
+    void set_frame(__cilkrts_stack_frame *sf) {
+        CILK_ASSERT(!frame);
+        frame = sf;
     }
-}
+    struct cilk_fiber *fiber;
+    struct cilk_fiber *fiber_child;
 
-// need to be careful when calling this function --- we check whether a
-// frame is set stolen (i.e., has a full frame associated with it), but note
-// that the setting of this can be delayed.  A thief can steal a spawned
-// frame, but it cannot fully promote it until it remaps its TLMM stack,
-// because the flag field is stored in the frame on the TLMM stack.  That
-// means, a frame can be stolen, in the process of being promoted, and
-// mean while, the stolen flag is not set until finish_promote.
-static inline int Closure_at_top_of_stack(__cilkrts_worker *const w,
-                                          __cilkrts_stack_frame *const frame) {
-    __cilkrts_stack_frame **head = w->head.load(std::memory_order_relaxed);
-    __cilkrts_stack_frame **tail = w->tail.load(std::memory_order_relaxed);
-    return (head == tail && __cilkrts_stolen(frame));
-}
+    struct cilk_fiber *ext_fiber;
+    struct cilk_fiber *ext_fiber_child;
+
+    worker_id owner_ready_deque; /* debug only */
+
+    enum ClosureStatus status; /* doubles as magic number */
+    bool has_cilk_callee;
+    bool exception_pending;
+    unsigned int join_counter; /* number of outstanding spawned children */
+    char *orig_rsp; /* the rsp one should use when sync successfully */
+
+    Closure *callee;
+
+    Closure *call_parent;  /* the "parent" closure that called */
+    Closure *spawn_parent; /* the "parent" closure that spawned */
+
+    Closure *left_sib;  // left *spawned* sibling in the closure tree
+    Closure *right_sib; // right *spawned* sibling in the closur tree
+    // right most *spawned* child in the closure tree
+    Closure *right_most_child;
+
+    /*
+     * stuff related to ready deque.
+     *
+     * ANGE: for top of the ReadyDeque, prev_ready = NULL
+     *       for bottom of the ReadyDeque, next_ready = NULL
+     *       next_ready pointing downward, prev_ready pointing upward
+     *
+     *       top
+     *  next | ^
+     *       | | prev
+     *       v |
+     *       ...
+     *  next | ^
+     *       | | prev
+     *       v |
+     *      bottom
+     */
+    Closure *next_ready;
+    Closure *prev_ready;
+
+    hyper_table *right_ht;
+    hyper_table *child_ht;
+    hyper_table *user_ht;
+
+    std::atomic<worker_id> mutex_owner
+      __attribute__((aligned(CILK_CACHE_LINE)));
+
+    bool has_children() const {
+        return (has_cilk_callee || join_counter != 0);
+    }
+
+    void set_status(enum ClosureStatus to) {
+        status = to;
+    }
+    void change_status(enum ClosureStatus from, enum ClosureStatus to) {
+        CILK_ASSERT(status == from);
+        (void)from; // unused if assertions disabled
+        status = to;
+    }
+
+    bool trylock(worker_id self);
+
+    void make_ready() {
+        status = CLOSURE_READY;
+    }
+
+    const char *status_to_string() const;
+
+    Closure(__cilkrts_stack_frame *sf);
+    ~Closure();
+
+    void lock(worker_id self);
+    void unlock(worker_id self);
+
+    static Closure *create(struct __cilkrts_worker *, __cilkrts_stack_frame *);
+    static void destroy(Closure *, struct __cilkrts_worker *);
+    static void destroy(Closure *, struct global_state *);
+
+    // This method is used for sync.
+    void suspend(struct ReadyDeque *deques, worker_id self);
+    // This method is used for steal.
+    void suspend_victim(struct ReadyDeque *deques, worker_id thief,
+                        worker_id victim);
+
+    void add_callee(Closure *new_callee);
+    void remove_callee();
+    void add_child(worker_id self, Closure *child);
+    void remove_child(worker_id self, Closure *child);
+
+    void assert_ownership(worker_id self);
+    void assert_alienation(worker_id self);
+    void checkmagic();
+
+private:
+    static void double_link_children(Closure *left, Closure *right);
+    void unlink_child();
+
+} __attribute__((aligned(CILK_CACHE_LINE)));
 
 #endif

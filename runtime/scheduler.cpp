@@ -1,13 +1,14 @@
 #include "debug.h"
-#include <assert.h>
-#include <pthread.h>
+
 #include <atomic>
-#include <stdint.h>
+#include <cstdint>
+#include <new>
 #ifdef __linux__
 #include <sched.h>
 #endif
-#include <stdio.h>
-#include <string.h>
+#if CILK_DEBUG
+#include <cstring> // memset
+#endif
 #include <unwind.h>
 
 #ifdef __APPLE__
@@ -74,6 +75,21 @@ void local_state::change_state(enum __cilkrts_worker_state s) {
     /* TODO: Update statistics based on state change. */
     CILK_ASSERT(state != s);
     state = s;
+}
+
+// JFC: The following comment refers to Cilk-M, not OpenCilk.
+// need to be careful when calling this function --- we check whether a
+// frame is set stolen (i.e., has a full frame associated with it), but note
+// that the setting of this can be delayed.  A thief can steal a spawned
+// frame, but it cannot fully promote it until it remaps its TLMM stack,
+// because the flag field is stored in the frame on the TLMM stack.  That
+// means, a frame can be stolen, in the process of being promoted, and
+// mean while, the stolen flag is not set until finish_promote.
+static bool Closure_at_top_of_stack(__cilkrts_worker *const w,
+                                    __cilkrts_stack_frame *const frame) {
+    __cilkrts_stack_frame **head = w->head.load(std::memory_order_relaxed);
+    __cilkrts_stack_frame **tail = w->tail.load(std::memory_order_relaxed);
+    return (head == tail && __cilkrts_stolen(frame));
 }
 
 /***********************************************************
@@ -237,7 +253,7 @@ void __cilkrts_set_return(__cilkrts_worker *const w) {
 
     deque_lock_self(deques, self);
     t = deque_peek_bottom(deques, self, self);
-    Closure_lock(self, t);
+    t->lock(self);
 
     CILK_ASSERT(t->status == CLOSURE_RUNNING);
     CILK_ASSERT(!t->has_children());
@@ -260,7 +276,7 @@ void __cilkrts_set_return(__cilkrts_worker *const w) {
     t->frame = NULL;
     t->unlock(self);
 
-    Closure_lock(self, call_parent);
+    call_parent->lock(self);
     CILK_ASSERT_POINTER_EQUAL(call_parent->fiber, t->fiber);
     t->fiber = NULL;
     if (USE_EXTENSION) {
@@ -368,8 +384,8 @@ static Closure *Closure_return(__cilkrts_worker *const w, worker_id self,
        are performing reductions */
 
     // always lock from top to bottom
-    Closure_lock(self, parent);
-    Closure_lock(self, child);
+    parent->lock(self);
+    child->lock(self);
 
     // Deal with reducers.
     // Get the current active hypermap.
@@ -413,8 +429,8 @@ static Closure *Closure_return(__cilkrts_worker *const w, worker_id self,
             active_ht = merge_two_hts(active_ht, rht);
         }
 
-        Closure_lock(self, parent);
-        Closure_lock(self, child);
+        parent->lock(self);
+        child->lock(self);
     }
 
     /* The returning closure and its parent are locked. */
@@ -536,7 +552,7 @@ void __cilkrts_exception_handler(__cilkrts_worker *w, char *exn) {
     t = deque_peek_bottom(deques, self, self);
 
     CILK_ASSERT(t);
-    Closure_lock(self, t);
+    t->lock(self);
 
     cilkrts_alert(EXCEPT, "(Cilk_exception_handler) closure %p!", (void *)t);
 
@@ -588,7 +604,7 @@ void __cilkrts_exception_handler(__cilkrts_worker *w, char *exn) {
 // ==============================================
 
 static inline bool trivial_stacklet(const __cilkrts_stack_frame *head) {
-    assert(head);
+    CILK_ASSERT(head);
 
     bool is_trivial = (head->flags & CILK_FRAME_DETACHED);
 
@@ -843,7 +859,7 @@ static Closure *promote_child(__cilkrts_stack_frame **head, ReadyDeque *deques,
         cl->suspend_victim(deques, self, pn);
         cl->unlock(self);
 
-        Closure_lock(self, spawn_parent);
+        spawn_parent->lock(self);
         *res = spawn_parent;
     }
 
@@ -1213,7 +1229,7 @@ int Cilk_sync(__cilkrts_worker *const w, __cilkrts_stack_frame *frame) {
 
     deque_lock_self(deques, self);
     t = deque_peek_bottom(deques, self, self);
-    Closure_lock(self, t);
+    t->lock(self);
     /* assert we are really at the top of the stack */
     CILK_ASSERT(Closure_at_top_of_stack(w, frame));
 
@@ -2002,6 +2018,20 @@ void Closure::destroy(Closure *cl, struct global_state *const g) {
     cilkrts_alert(CLOSURE, "Deallocate closure %p", (void *)cl);
     cl->~Closure();
     cilk_internal_free_global(g, cl, sizeof(*cl), IM_CLOSURE);
+}
+
+void Closure::lock(worker_id self) {
+    checkmagic();
+    while (true) {
+        worker_id current_owner =
+            mutex_owner.load(std::memory_order_relaxed);
+        if ((current_owner == NO_WORKER) &&
+            mutex_owner.compare_exchange_weak(
+                current_owner, self, std::memory_order_acq_rel,
+                std::memory_order_relaxed))
+            break;
+        busy_loop_pause();
+    }
 }
 
 void Closure::unlock(worker_id self) {

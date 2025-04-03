@@ -10,7 +10,6 @@
 #include "cilk-internal.h"
 #include "cilk2c_inlined.h"
 #include "cilk2c.h"
-#include "closure-type.h"
 #include "closure.h"
 #include "debug.h"
 #include "fiber-header.h"
@@ -137,7 +136,7 @@ sync_in_personality(__cilkrts_worker *w, __cilkrts_stack_frame *sf,
 
         deque_lock_self(deques, self);
         Closure *t = deque_peek_bottom(deques, self, self);
-        Closure_lock(self, t);
+        t->lock(self);
 
         // ensure that we return here after a cilk_sync.
         exn_r->parent_rsp = t->orig_rsp;

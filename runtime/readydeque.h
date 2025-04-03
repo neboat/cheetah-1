@@ -2,7 +2,7 @@
 #define _READYDEQUE_H
 
 #include <atomic>
-#include "closure-type.h"
+#include "closure.h"
 #include "rts-config.h"
 #include "worker_coord.h"
 
