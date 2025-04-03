@@ -82,27 +82,10 @@ sysdep_restore_fp_state(__cilkrts_stack_frame *sf) {
 #endif
 }
 
-static inline char *sysdep_get_fiber_start(struct cilk_fiber *fiber) {
-    return fiber->alloc_low;
-}
-
-static inline char *sysdep_get_fiber_end(struct cilk_fiber *fiber) {
-    return (char *)(fiber + 1);
-}
-
-static inline char *sysdep_get_stack_start(struct cilk_fiber *fiber) {
-    /* The OpenCilk compiler should ensure that sufficient space is
-       allocated for outgoing arguments of any function, so we don't need any
-       particular alignment here.  We use a positive alignment here for the
-       subsequent debugging step that checks the stack is accessible. */
-
-    return (char *)fiber;
-}
-
 static inline char *sysdep_reset_stack_for_resume(struct cilk_fiber *fiber,
                                                   __cilkrts_stack_frame *sf) {
     CILK_ASSERT(fiber);
-    char *sp = sysdep_get_stack_start(fiber);
+    char *sp = fiber->get_stack_start();
     /* Debugging: make sure stack is accessible. */
     ((volatile char *)sp)[-1];
     SP(sf) = sp;
@@ -121,18 +104,6 @@ void sysdep_longjmp_to_sf(__cilkrts_stack_frame *sf) {
     sysdep_restore_fp_state(sf);
 #endif
     __builtin_longjmp(sf->ctx, 1);
-}
-
-static inline void init_fiber_header(struct cilk_fiber *fh) {
-    fh->worker = INVALID_WORKER;
-    fh->current_stack_frame = nullptr;
-    fh->fake_stack_save = nullptr;
-}
-
-static inline void deinit_fiber_header(struct cilk_fiber *fh) {
-    fh->worker = INVALID_WORKER;
-    fh->current_stack_frame = nullptr;
-    fh->fake_stack_save = nullptr;
 }
 
 CHEETAH_INTERNAL void cilk_fiber_pool_global_init(global_state *g);
@@ -156,8 +127,6 @@ struct cilk_fiber *cilk_fiber_allocate_from_pool(__cilkrts_worker *w);
 CHEETAH_INTERNAL
 void cilk_fiber_deallocate_to_pool(__cilkrts_worker *w,
                                    struct cilk_fiber *fiber);
-
-CHEETAH_INTERNAL int in_fiber(struct cilk_fiber *, void *);
 
 #if CILK_ENABLE_ASAN_HOOKS
 void sanitizer_start_switch_fiber(struct cilk_fiber *fiber);

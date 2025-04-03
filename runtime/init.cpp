@@ -498,7 +498,7 @@ void __cilkrts_internal_invoke_cilkified_root(__cilkrts_stack_frame *sf) {
         // setup_for_execution.
         sf->extension = w->extension;
         // Initialize worker->ext_stack.
-        w->ext_stack = sysdep_get_stack_start(root_closure->ext_fiber);
+        w->ext_stack = root_closure->ext_fiber->get_stack_start();
     }
     CILK_START_TIMING(w, INTERVAL_CILKIFY_ENTER);
 

@@ -210,7 +210,7 @@ static void setup_for_sync(__cilkrts_worker *w, worker_id self, Closure *t) {
         w->extension = t->frame->extension;
         // Set the worker's extension stack to be the start of the saved
         // extension fiber.
-        w->ext_stack = sysdep_get_stack_start(t->ext_fiber);
+        w->ext_stack = t->ext_fiber->get_stack_start();
     }
     t->orig_rsp = NULL; // unset once we have sync-ed
 }
@@ -1164,8 +1164,8 @@ void longjmp_to_user_code(__cilkrts_worker *w, Closure *t) {
         if (!__cilkrts_throwing(sf)) {
             CILK_ASSERT_NULL(t->orig_rsp);
             CILK_ASSERT((sf->flags & CILK_FRAME_LAST) ||
-                               in_fiber(fiber, (char *)FP(sf)));
-            CILK_ASSERT(in_fiber(fiber, (char *)SP(sf)));
+                               fiber->in_fiber((char *)FP(sf)));
+            CILK_ASSERT(fiber->in_fiber((char *)SP(sf)));
         }
 
         l->provably_good_steal = false;
@@ -1183,7 +1183,7 @@ void longjmp_to_user_code(__cilkrts_worker *w, Closure *t) {
             CILK_ASSERT_POINTER_EQUAL(SP(sf), new_rsp);
             if (USE_EXTENSION) {
                 w->extension = sf->extension;
-                w->ext_stack = sysdep_get_stack_start(t->ext_fiber);
+                w->ext_stack = t->ext_fiber->get_stack_start();
             }
         }
     }

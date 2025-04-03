@@ -357,7 +357,7 @@ struct cilk_fiber *cilk_fiber_allocate_from_pool(__cilkrts_worker *w) {
     }
     CILK_ASSERT(ret);
     sanitizer_unpoison_fiber(ret);
-    init_fiber_header(ret);
+    ret->clear();
     return ret;
 }
 
@@ -376,7 +376,7 @@ void cilk_fiber_deallocate_to_pool(__cilkrts_worker *w,
                            (pool->capacity / BATCH_FRACTION));
     }
     if (fiber_to_return) {
-        deinit_fiber_header(fiber_to_return);
+        fiber_to_return->clear();
         pool->fibers[pool->size++] = fiber_to_return;
         pool->stats.in_use--;
         if (pool->size > pool->stats.max_free) {

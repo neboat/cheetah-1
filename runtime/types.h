@@ -11,7 +11,4 @@ typedef struct global_state global_state;
 
 #define NO_WORKER 0xffffffffu /* type worker_id */
 
-// Constant representing invalid worker.
-#define INVALID_WORKER (__cilkrts_worker *)0xbfbfbfbfbf
-
 #endif /* _CILK_TYPES_H */

@@ -178,7 +178,7 @@ void sanitizer_start_switch_fiber(struct cilk_fiber *fiber) {
     if (NULL != sanitizer_start_switch_fiber_fn) {
         if (fiber) {
             char *stack_low = fiber->stack_low;
-            char *stack_high = sysdep_get_stack_start(fiber);
+            char *stack_high = fiber->get_stack_start();
             // The worker is switching to Cilk user code.
             if (!on_fiber) {
                 // The worker is switching from the runtime.  Save the
@@ -256,7 +256,7 @@ void sanitizer_unpoison_fiber(struct cilk_fiber *fiber) {
         have_asan_unpoison_memory_region_fn = true;
     }
     if (NULL != asan_unpoison_memory_region_fn) {
-        char *stack_high = sysdep_get_stack_start(fiber);
+        char *stack_high = fiber->get_stack_start();
         asan_unpoison_memory_region_fn(
             fiber->stack_low, (size_t)(stack_high - fiber->stack_low));
     }
@@ -268,7 +268,7 @@ void sanitizer_poison_fiber(struct cilk_fiber *fiber) {
         have_asan_poison_memory_region_fn = true;
     }
     if (NULL != asan_poison_memory_region_fn) {
-        char *stack_high = sysdep_get_stack_start(fiber);
+        char *stack_high = fiber->get_stack_start();
         asan_poison_memory_region_fn(
             fiber->stack_low, (size_t)(stack_high - fiber->stack_low));
     }
@@ -316,11 +316,11 @@ struct cilk_fiber *make_stack(size_t stack_size) {
 static void free_stack(struct cilk_fiber *f) {
     if (DEBUG_ENABLED(MEMORY_SLOW)) {
         char *stack_low = f->stack_low;
-        char *stack_high = sysdep_get_stack_start(f);
+        char *stack_high = f->get_stack_start();
         memset(stack_low, 0xbb, stack_high - stack_low);
     }
-    char *alloc_low = sysdep_get_fiber_start(f);
-    char *alloc_high = sysdep_get_fiber_end(f);
+    char *alloc_low = f->get_fiber_start();
+    char *alloc_high = f->get_fiber_end();
     if (munmap(f->alloc_low, alloc_high - alloc_low) < 0)
         cilkrts_bug(NULL, "Cilk: stack munmap failed");
     /* f is now an invalid pointer */
@@ -332,19 +332,19 @@ static void free_stack(struct cilk_fiber *f) {
 
 struct cilk_fiber *cilk_fiber_allocate(size_t stacksize) {
     struct cilk_fiber *fiber = make_stack(stacksize);
-    init_fiber_header(fiber);
+    fiber->clear();
     cilkrts_alert(FIBER, "Allocate fiber %p [%p--%p]", (void *)fiber,
                   (void *)fiber->stack_low,
-                  (void *)sysdep_get_stack_start(fiber));
+                  (void *)fiber->get_stack_start());
     return fiber;
 }
 
 void cilk_fiber_deallocate(struct cilk_fiber *fiber) {
     cilkrts_alert(FIBER, "Deallocate fiber %p [%p--%p]", (void *)fiber,
                   (void *)fiber->stack_low,
-                  (void *)sysdep_get_stack_start(fiber));
+                  (void *)fiber->get_stack_start());
     if (DEBUG_ENABLED_STATIC(FIBER))
-        CILK_ASSERT(!in_fiber(fiber, fiber->current_stack_frame));
+        CILK_ASSERT(!fiber->in_fiber(fiber->current_stack_frame));
     free_stack(fiber);
 }
 
@@ -354,13 +354,6 @@ void cilk_fiber_deallocate_global(struct global_state *g,
 
     cilkrts_alert(FIBER, "Deallocate fiber %p [%p--%p]", (void *)fiber,
                   (void *)fiber->stack_low,
-                  (void *)sysdep_get_stack_start(fiber));
+                  (void *)fiber->get_stack_start());
     free_stack(fiber);
-}
-
-int in_fiber(struct cilk_fiber *fiber, void *p) {
-    void *stack_high = sysdep_get_stack_start(fiber);
-    void *stack_low = fiber->stack_low;
-    // One past the end is considered in the fiber.
-    return p >= stack_low && p <= stack_high;
 }
