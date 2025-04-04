@@ -1,7 +1,6 @@
 #ifndef _LOCAL_HYPERTABLE_H
 #define _LOCAL_HYPERTABLE_H
 
-#include <stdbool.h>
 #include <stdint.h>
 
 #include "hyperobject_base.h"

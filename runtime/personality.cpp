@@ -1,6 +1,4 @@
-#include <signal.h>
 #include <atomic>
-#include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
 #include <unwind.h>

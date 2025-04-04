@@ -1,8 +1,6 @@
 #ifndef _CILK_LOCAL_H
 #define _CILK_LOCAL_H
 
-#include <stdbool.h>
-
 #include "internal-malloc-impl.h" /* for cilk_im_desc */
 
 enum __cilkrts_worker_state : unsigned char {

@@ -1,7 +1,6 @@
 #ifndef _CILK_INTERNAL_H
 #define _CILK_INTERNAL_H
 
-#include <stdbool.h>
 #include <stdint.h>
 
 #include <cilk/cilk_api.h>

@@ -1,7 +1,6 @@
 // Runtime functions that are known to the compiler.
 // All of these use C linkage.
 
-#include <stdbool.h>
 #include <stdint.h>
 #include "cilk/cilk_api.h"
 
