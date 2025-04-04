@@ -5,7 +5,6 @@
 #include <stdlib.h>
 
 #include "rts-config.h"
-#include "types.h"
 
 CHEETAH_INTERNAL extern int cheetah_page_shift;
 

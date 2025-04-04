@@ -2,6 +2,7 @@
 #define _CILK_WORKER_H
 
 #include <atomic>
+#include <cstdint>
 
 #include "rts-config.h"
 
@@ -9,6 +10,10 @@ struct __cilkrts_stack_frame;
 struct local_state;
 struct global_state;
 struct hyper_table;
+
+typedef uint32_t worker_id;
+#define WORKER_ID_FMT PRIu32
+#define NO_WORKER worker_id(0xffffffffu)
 
 struct __cilkrts_worker {
     // Worker id, a small integer

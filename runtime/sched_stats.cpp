@@ -8,7 +8,6 @@
 #include "internal-malloc-impl.h"
 #include "local.h"
 #include "sched_stats.h"
-#include "types.h"
 
 #if SCHED_STATS
 static const char *enum_to_str(enum timing_type t) {

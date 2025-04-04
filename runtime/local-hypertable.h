@@ -6,7 +6,6 @@
 
 #include "hyperobject_base.h"
 #include "rts-config.h"
-#include "types.h"
 
 typedef uint32_t index_t;
 

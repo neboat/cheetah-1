@@ -13,7 +13,6 @@
 #include "mutex.h"
 #include "rts-config.h"
 #include "sched_stats.h"
-#include "types.h"
 #include "worker.h"
 
 extern unsigned __cilkrts_nproc;

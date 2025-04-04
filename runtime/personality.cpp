@@ -18,7 +18,6 @@
 #include "init.h"
 #include "local-reducer-api.h"
 #include "readydeque.h"
-#include "types.h"
 #include "worker.h"
 
 typedef _Unwind_Reason_Code (*__personality_routine)(

@@ -27,6 +27,7 @@
 #include "local.h"
 #include "readydeque.h"
 #include "scheduler.h"
+#include "worker.h"
 #include "worker_coord.h"
 #include "worker_sleep.h"
 

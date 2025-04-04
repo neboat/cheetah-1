@@ -7,7 +7,7 @@
 #include "frame.h"
 #include "mutex.h"
 #include "rts-config.h"
-#include "types.h"
+#include "worker.h"
 
 #include <stdint.h>
 

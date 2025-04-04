@@ -12,7 +12,6 @@
 #include "internal-malloc.h"
 #include "rts-config.h"
 #include "sched_stats.h"
-#include "types.h"
 #include "worker.h"
 
 #if defined __i386__ || defined __x86_64__
