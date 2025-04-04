@@ -52,7 +52,8 @@ struct scheduler_event {
         MORE_THIEVES,
         ALL_THIEVES,
     } code;
-    int data;
+    unsigned short data0;
+    int data1;
     worker_id worker;
 };
 
@@ -144,10 +145,8 @@ struct global_state {
 
     CHEETAH_INTERNAL uint64_t add_to_disengaged(int32_t val);
     CHEETAH_INTERNAL uint64_t add_to_sentinels(int32_t val);
+    CHEETAH_INTERNAL void record_event(scheduler_event::event, int, worker_id);
 };
-
-CHEETAH_INTERNAL void record_event(global_state *, scheduler_event::event,
-                                   int, worker_id);
 
 CHEETAH_INTERNAL extern global_state *default_cilkrts;
 CHEETAH_INTERNAL extern __cilkrts_worker default_worker;

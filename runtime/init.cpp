@@ -662,10 +662,10 @@ static void print_events(global_state *g) {
         unsigned int ns = (unsigned int)(t % 1000);
         if (w == NO_WORKER)
             printf("%11lu.%03u %20s --- %d\n", us, ns,
-                   code_s, g->events[i].data);
+                   code_s, g->events[i].data1);
         else
             printf("%11lu.%03u %20s %3u %d\n", us, ns,
-                   code_s, (unsigned int)w, g->events[i].data);
+                   code_s, (unsigned int)w, g->events[i].data1);
     }
 }
 

@@ -202,13 +202,14 @@ void for_each_worker_rev(global_state *g,
             fn(g->workers[i], data);
 }
 
-void record_event(global_state *g, scheduler_event::event code,
-                  int data, worker_id self) {
+void global_state::record_event(scheduler_event::event code,
+                                int data, worker_id self) {
 #ifdef __amd64__ // really, if __builtin_readcyclecounter is fast
-    struct scheduler_event *event = &g->events[g->event_index++ % 1024];
+    struct scheduler_event *event = &events[event_index++ % 1024];
     event->time = __builtin_readcyclecounter();
     event->code = code;
-    event->data = data;
+    event->data0 = 0;
+    event->data1 = data;
     event->worker = self;
 #endif
 }
@@ -222,7 +223,7 @@ void record_event(global_state *g, scheduler_event::event code,
 // Routines to control the cilkified state.
 
 void global_state::set_cilkified() {
-    record_event(this, scheduler_event::CILKIFY, 0, NO_WORKER);
+    record_event(scheduler_event::CILKIFY, 0, NO_WORKER);
     // Set cilkified = true, indicating that the execution is now cilkified.
     cilkified.store(true, std::memory_order_release);
 }
@@ -230,7 +231,7 @@ void global_state::set_cilkified() {
 // Mark the computation as no longer cilkified and signal the thread that
 // originally cilkified the execution.
 void global_state::signal_uncilkified() {
-    record_event(this, scheduler_event::UNCILKIFY, 0, NO_WORKER);
+    record_event(scheduler_event::UNCILKIFY, 0, NO_WORKER);
     cilkified.store(false, std::memory_order_release);
     cilkified.notify_all();
 }
@@ -245,7 +246,7 @@ void global_state::wait_while_cilkified() {
         }
         busy_pause();
     }
-    record_event(this, scheduler_event::WAIT_CILKIFIED, 0, NO_WORKER);
+    record_event(scheduler_event::WAIT_CILKIFIED, 0, NO_WORKER);
     while (cilkified.load(std::memory_order_acquire)) {
         cilkified.wait(true);
     }
@@ -275,7 +276,7 @@ void global_state::request_more_thieves(worker_id self, uint32_t count) {
         if (disengaged_thieves.compare_exchange_strong(
                 disengaged_thieves_copy, disengaged_thieves_copy + to_wake,
                 std::memory_order_release, std::memory_order_relaxed)) {
-            record_event(this, scheduler_event::MORE_THIEVES, to_wake, self);
+            record_event(scheduler_event::MORE_THIEVES, to_wake, self);
             // We successfully updated the futex.  Wake the thief threads
             // waiting on this futex.
             switch (to_wake) {
@@ -312,7 +313,7 @@ uint32_t global_state::thief_disengage(worker_id self) {
             }
             busy_loop_pause();
         }
-        record_event(this, scheduler_event::WAIT_DISENGAGED, 0, self);
+        record_event(scheduler_event::WAIT_DISENGAGED, 0, self);
         disengaged_thieves.wait(0, std::memory_order_relaxed);
     }
 }
@@ -320,7 +321,7 @@ uint32_t global_state::thief_disengage(worker_id self) {
 // Signal the thief threads to start work-stealing (or terminate, if
 // g->terminate == 1).
 void global_state::wake_thieves() {
-    record_event(this, scheduler_event::ALL_THIEVES, 0, NO_WORKER);
+    record_event(scheduler_event::ALL_THIEVES, 0, NO_WORKER);
     disengaged_thieves.store(nworkers - 1, std::memory_order_release);
     disengaged_thieves.notify_all();
 }
@@ -353,7 +354,7 @@ void global_state::sleep_thieves() {
 
 // Signal to all disengaged thief threads to resume work-stealing.
 void global_state::wake_all_disengaged() {
-    record_event(this, scheduler_event::ALL_THIEVES, 0, NO_WORKER);
+    record_event(scheduler_event::ALL_THIEVES, 0, NO_WORKER);
     disengaged_thieves.store(INT_MAX, std::memory_order_release);
     disengaged_thieves.notify_all();
 }
