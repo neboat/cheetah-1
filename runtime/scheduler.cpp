@@ -1345,7 +1345,7 @@ static void do_what_it_says(ReadyDeque *deques, __cilkrts_worker *w,
                     l->exiting = false;
                     global_state *g = w->g;
                     CILK_EXIT_WORKER_TIMING(g);
-                    signal_uncilkified(g);
+                    g->signal_uncilkified();
                     return;
                 }
 
@@ -1452,7 +1452,7 @@ static inline void non_boss_scheduler(__cilkrts_worker *w) {
               rts->done.load(std::memory_order_relaxed)) {
            busy_pause();
        }
-       if (thief_should_wait(rts)) {
+       if (rts->thief_should_wait()) {
            break;
        }
     }
@@ -1699,10 +1699,10 @@ void *scheduler_thread_proc(void *arg) {
         // Wait for g->start == 1 to start executing the work-stealing loop.  We
         // use a condition variable to wait on g->start, because this approach
         // seems to result in better performance.
-        if (thief_should_wait(rts)) {
-            disengage_worker(rts, nworkers, self);
-            l->wake_val = thief_wait(rts, self);
-            reengage_worker(rts, nworkers, self);
+        if (rts->thief_should_wait()) {
+            rts->disengage_worker(nworkers, self);
+            l->wake_val = rts->thief_wait(self);
+            rts->reengage_worker(nworkers, self);
         }
         CILK_STOP_TIMING(w, INTERVAL_SLEEP_UNCILK);
 

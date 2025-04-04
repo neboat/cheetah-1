@@ -416,7 +416,7 @@ static void __cilkrts_stop_workers(global_state *g) {
     // We call wake_all_disengaged, rather than wake_thieves, to properly
     // terminate all thieves, whether they're disengaged inside or outside the
     // work-stealing loop.
-    wake_all_disengaged(g);
+    g->wake_all_disengaged();
 
     // Join the worker pthreads
     unsigned int worker_start = 1;
@@ -428,12 +428,6 @@ static void __cilkrts_stop_workers(global_state *g) {
     }
     cilkrts_alert(BOOT, "(threads_join) All workers joined!");
     g->workers_started = false;
-}
-
-// Block until signaled the Cilkified region is done.  Executed by the Cilkfying
-// thread.
-static inline void wait_until_cilk_done(global_state *g) {
-    wait_while_cilkified(g);
 }
 
 // Helper method to make the boss thread wait for the cilkified region
@@ -448,7 +442,7 @@ static inline __attribute__((noinline)) void boss_wait_helper(void) {
     CILK_BOSS_START_TIMING(g);
 
     // Wait until the cilkified region is done executing.
-    wait_until_cilk_done(g);
+    g->wait_while_cilkified();
 
     __cilkrts_need_to_cilkify = true;
 
@@ -527,13 +521,12 @@ void __cilkrts_internal_invoke_cilkified_root(__cilkrts_stack_frame *sf) {
     // Now kick off execution of the Cilkified region by setting appropriate
     // flags.
 
-    /* reset_disengaged_var(g); */
     if (__builtin_expect(g->cilkified.load(std::memory_order_relaxed), false)) {
         cilkrts_bug(
             NULL,
             "ERROR: OpenCilk runtime already executing a Cilk computation.\n");
     }
-    set_cilkified(g);
+    g->set_cilkified();
 
     // Set g->done = false, so Cilk workers will continue trying to steal.
     g->done.store(false, std::memory_order_release);
@@ -544,8 +537,8 @@ void __cilkrts_internal_invoke_cilkified_root(__cilkrts_stack_frame *sf) {
     // occur, rather than all at once.  Initial testing of this approach did not
     // seem to perform well, however.  One possible reason why could be because
     // of the extra kernel interactions involved in waking workers gradually.
-    wake_thieves(g);
-    /* request_more_thieves(g, g->nworkers); */
+    g->wake_thieves();
+    /* g->request_more_thieves(g->nworkers); */
 
     // Start the workers if necessary
     if (__builtin_expect(!g->workers_started, false)) {
@@ -579,10 +572,9 @@ void __cilkrts_internal_exit_cilkified_root(global_state *g,
     // Mark the computation as done.  Also "sleep" the workers: update global
     // flags so workers who exit the work-stealing loop will return to waiting
     // for the start of the next Cilkified region.
-    sleep_thieves(g);
+    g->sleep_thieves();
 
     g->done.store(true, std::memory_order_release);
-    /* wake_all_disengaged(g); */
 
     if (!is_boss) {
         w->l->exiting = true;

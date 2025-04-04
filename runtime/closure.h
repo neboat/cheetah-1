@@ -26,9 +26,7 @@ enum ClosureStatus : unsigned char {
  * the children themselves, in order to avoid extra protocols
  * and locking.
  */
-struct
-  __attribute((visibility("hidden")))
-Closure {
+struct __attribute__((visibility("hidden"))) Closure {
     __cilkrts_stack_frame *frame; /* rest of the closure */
 
     void clear_frame() { frame = nullptr; }

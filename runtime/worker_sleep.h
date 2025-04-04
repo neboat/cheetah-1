@@ -75,39 +75,6 @@ typedef struct worker_counts {
     long disengaged;
 } worker_counts;
 
-// Update the index-to-worker map to swap self with the worker at the target
-// index.
-static void swap_worker_with_target(global_state *g, worker_id self,
-                                    worker_id target_index) {
-    worker_id *worker_to_index = g->worker_to_index;
-    worker_id *index_to_worker = g->index_to_worker;
-
-    worker_id self_index = worker_to_index[self];
-    worker_id target_worker = index_to_worker[target_index];
-
-    // Update the index-to-worker map.
-    index_to_worker[self_index] = target_worker;
-    index_to_worker[target_index] = self;
-
-    // Update the worker-to-index map.
-    worker_to_index[target_worker] = self_index;
-    worker_to_index[self] = target_index;
-}
-
-// These functions return the old value
-
-__attribute__((always_inline)) static inline uint64_t
-add_to_sentinels(global_state *const rts, int32_t val) {
-    // val is sign extended to 64 bits
-    return rts->disengaged_sentinel.fetch_add(val, std::memory_order_release);
-}
-
-__attribute__((always_inline)) static inline uint64_t
-add_to_disengaged(global_state *const rts, int32_t val) {
-    return rts->disengaged_sentinel.fetch_add(DISENGAGED_SENTINEL(val, 0),
-                                              std::memory_order_acquire);
-}
-
 #if ENABLE_THIEF_SLEEP
 // Called by a thief thread.  Causes the thief thread to try to sleep, that is,
 // to wait for a signal to resume work-stealing.
@@ -140,13 +107,13 @@ static bool try_to_disengage_thief(global_state *g, worker_id self,
         // Update the index-to-worker map.
         worker_id last_index = nworkers - (new_disengaged_sentinel >> 32);
         if (worker_to_index[self] < last_index) {
-            swap_worker_with_target(g, self, last_index);
+            g->swap_worker_with_target(self, last_index);
         }
         // Release the lock on the index structure
         cilk_mutex_unlock(&g->index_lock);
 
         // Disengage this thread.
-        thief_disengage(g, self);
+        g->thief_disengage(self);
 
         // The thread is now reengaged.  Grab the lock on the index structure.
         cilk_mutex_lock(&g->index_lock);
@@ -157,7 +124,7 @@ static bool try_to_disengage_thief(global_state *g, worker_id self,
 
         last_index = nworkers - GET_DISENGAGED(disengaged_sentinel);
         if (worker_to_index[self] > last_index) {
-            swap_worker_with_target(g, self, last_index);
+            g->swap_worker_with_target(self, last_index);
         }
 
         // Release the lock on the index structure.
@@ -236,7 +203,7 @@ maybe_reengage_workers(global_state *const rts, worker_id self,
     if (fails >= SENTINEL_THRESHOLD) {
         // This thief is no longer a sentinel.  Decrement the number of
         // sentinels.
-        uint64_t disengaged_sentinel = add_to_sentinels(rts, -1);
+        uint64_t disengaged_sentinel = rts->add_to_sentinels(-1);
         // Get the current worker counts, with this sentinel now active.
         worker_counts counts =
             get_worker_counts(disengaged_sentinel - 1, nworkers);
@@ -311,7 +278,7 @@ maybe_reengage_workers(global_state *const rts, worker_id self,
         }
 
         if (request > 0) {
-            request_more_thieves(rts, self, request);
+            rts->request_more_thieves(self, request);
         }
 
         // Set a cap on the fail count.
@@ -400,7 +367,7 @@ handle_failed_steal_attempts(global_state *const rts, worker_id self,
         } else {
 #if ENABLE_THIEF_SLEEP
             if (SENTINEL_THRESHOLD == fails) {
-                add_to_sentinels(rts, 1);
+                rts->add_to_sentinels(1);
             }
 
             // Check the current worker counts.
@@ -580,7 +547,7 @@ decrease_fails_by_work(global_state *const rts,
 
     // If this worker is still sentinel, update sentinel-worker count.
     if (fails >= SENTINEL_THRESHOLD)
-        add_to_sentinels(rts, 1);
+        rts->add_to_sentinels(1);
     return fails;
 }
 #endif // ENABLE_THIEF_SLEEP
@@ -610,38 +577,10 @@ reset_fails(global_state *rts, unsigned int fails) {
     if (fails >= SENTINEL_THRESHOLD) {
         // If this worker was sentinel, decrement the number of sentinel
         // workers, effectively making this worker active.
-        add_to_sentinels(rts, -1);
+        rts->add_to_sentinels(-1);
     }
     return 0;
 }
 #endif // ENABLE_THIEF_SLEEP
-
-__attribute__((always_inline)) static inline void
-disengage_worker(global_state *g, unsigned int nworkers, worker_id self) {
-    cilk_mutex_lock(&g->index_lock);
-    uint64_t disengaged_sentinel = add_to_disengaged(g, 1);
-    // Update the index-to-worker map.  We derive last_index from the new value
-    // of disengaged_sentinel, because the index is now invalid.
-    worker_id last_index = nworkers - ((disengaged_sentinel >> 32) + 1);
-    if (g->worker_to_index[self] < last_index) {
-        swap_worker_with_target(g, self, last_index);
-    }
-    // Release the lock on the index structure
-    cilk_mutex_unlock(&g->index_lock);
-}
-
-__attribute__((always_inline)) static inline void
-reengage_worker(global_state *g, unsigned int nworkers, worker_id self) {
-    cilk_mutex_lock(&g->index_lock);
-    uint64_t disengaged_sentinel = add_to_disengaged(g, -1);
-    // Update the index-to-worker map.  We derive last_index from the old value
-    // of disengaged_sentinel, because the index is now valid.
-    worker_id last_index = nworkers - (disengaged_sentinel >> 32);
-    if (g->worker_to_index[self] > last_index) {
-        swap_worker_with_target(g, self, last_index);
-    }
-    // Release the lock on the index structure
-    cilk_mutex_unlock(&g->index_lock);
-}
 
 #endif /* _WORKER_SLEEP_H */

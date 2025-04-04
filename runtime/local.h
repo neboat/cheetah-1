@@ -10,7 +10,7 @@ enum __cilkrts_worker_state : unsigned char {
     WORKER_RUN
 };
 
-struct local_state {
+struct __attribute__((visibility("hidden"))) local_state {
     struct __cilkrts_stack_frame **shadow_stack;
 
     __cilkrts_worker_state state;

@@ -121,6 +121,29 @@ struct global_state {
     _Atomic size_t event_index;
 
     struct scheduler_event events[1024];
+
+    CHEETAH_INTERNAL void set_cilkified();
+    CHEETAH_INTERNAL void signal_uncilkified();
+    CHEETAH_INTERNAL void wait_while_cilkified();
+    CHEETAH_INTERNAL void request_more_thieves(worker_id self, uint32_t count);
+    CHEETAH_INTERNAL uint32_t thief_disengage(worker_id self);
+    CHEETAH_INTERNAL uint32_t thief_wait(worker_id self);
+    CHEETAH_INTERNAL void wake_thieves();
+    CHEETAH_INTERNAL bool thief_should_wait();
+    // Reset global state to make thief threads sleep for signal to start
+    // work-stealing again.
+    CHEETAH_INTERNAL void sleep_thieves();
+    CHEETAH_INTERNAL void wake_all_disengaged();
+
+    CHEETAH_INTERNAL
+    void reengage_worker(unsigned int nworkers, worker_id self);
+    CHEETAH_INTERNAL
+    void disengage_worker(unsigned int nworkers, worker_id self);
+    CHEETAH_INTERNAL
+    void swap_worker_with_target(worker_id self, worker_id target_index);
+
+    CHEETAH_INTERNAL uint64_t add_to_disengaged(int32_t val);
+    CHEETAH_INTERNAL uint64_t add_to_sentinels(int32_t val);
 };
 
 CHEETAH_INTERNAL void record_event(global_state *, scheduler_event::event,
