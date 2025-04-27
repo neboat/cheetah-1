@@ -4,23 +4,21 @@
 // program.
 // =============================================================================
 
-#include <stdatomic.h>
-#include <stdio.h>
-#include <unwind.h>
-
 #include "cilk-internal.h"
 #include "cilk2c.h"
 #include "debug.h"
-#include "fiber.h"
 #include "fiber-header.h"
+#include "fiber.h"
 #include "frame.h"
 #include "global.h"
 #include "init.h"
 #include "local-reducer-api.h"
-#include "scheduler.h"
-
 #include "pedigree_ext.c"
+#include "scheduler.h"
 #include "worker.h"
+#include <stdatomic.h>
+#include <stdio.h>
+#include <unwind.h>
 
 // This variable encodes the alignment of a __cilkrts_stack_frame, both in its
 // value and in its own alignment.  Because LLVM IR does not associate
@@ -177,6 +175,7 @@ __attribute__((always_inline)) void __cilk_sync(__cilkrts_stack_frame *sf) {
                 __cilkrts_sync(sf);
             } else {
                 sanitizer_finish_switch_fiber();
+                Cilk_do_reductions(sf);
                 if (sf->flags & CILK_FRAME_EXCEPTION_PENDING) {
                     __cilkrts_check_exception_raise(sf);
                 }
@@ -198,6 +197,7 @@ __cilk_sync_nothrow(__cilkrts_stack_frame *sf) {
                 __cilkrts_sync(sf);
             } else {
                 sanitizer_finish_switch_fiber();
+                Cilk_do_reductions(sf);
             }
         }
         if (USE_EXTENSION) {
