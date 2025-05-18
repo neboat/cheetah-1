@@ -156,7 +156,7 @@ struct bucket *__cilkrts_find_hyperobject_hash(hyper_table *table,
     return NULL;
 }
 
-bool remove_hyperobject(hyper_table *table, uintptr_t key) {
+bool remove_hyperobject(hyper_table *table, uintptr_t key) noexcept {
     if (table->capacity < MIN_HT_CAPACITY) {
         // If the table is small enough, just scan the array.
         struct bucket *buckets = table->buckets;
@@ -201,7 +201,7 @@ bool remove_hyperobject(hyper_table *table, uintptr_t key) {
     return true;
 }
 
-bool insert_hyperobject(hyper_table *table, struct bucket b) {
+bool insert_hyperobject(hyper_table *table, struct bucket b) noexcept {
     assert(b.key != KEY_EMPTY && b.key != KEY_DELETED);
     int32_t capacity = table->capacity;
     struct bucket *buckets = table->buckets;

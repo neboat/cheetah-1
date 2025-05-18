@@ -17,6 +17,9 @@
 #define CHEETAH_INTERNAL_NORETURN \
   __attribute((noreturn, nothrow, visibility("hidden")))
 #endif
+#ifndef CHEETAH_INTERNAL_NOEXCEPT
+#define CHEETAH_INTERNAL_NOEXCEPT __attribute((visibility("hidden,nothrow")))
+#endif
 
 #ifndef __CILKRTS_VERSION
 #define __CILKRTS_VERSION 0x0

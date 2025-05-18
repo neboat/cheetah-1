@@ -47,7 +47,7 @@ static char *get_cfa(struct _Unwind_Context *context) {
 }
 
 // Identity method for the exception reducer.
-void init_exception_reducer(void *v) {
+void init_exception_reducer(void *v) noexcept {
     struct closure_exception *ex = (struct closure_exception *)(v);
     ex->exn = NULL;
     ex->reraise_cfa = NULL;
@@ -56,7 +56,7 @@ void init_exception_reducer(void *v) {
 }
 
 // Reduce method for the exception reducer.
-void reduce_exception_reducer(void *l, void *r) {
+void reduce_exception_reducer(void *l, void *r) noexcept {
     struct closure_exception *lex = (struct closure_exception *)(l);
     struct closure_exception *rex = (struct closure_exception *)(r);
     if (lex->exn == NULL) {
@@ -78,7 +78,7 @@ void reduce_exception_reducer(void *l, void *r) {
 
 // Get the current view of the exception-reducer state, creating a new view if
 // none exists.
-struct closure_exception *get_exception_reducer(__cilkrts_worker *w) {
+struct closure_exception *get_exception_reducer(__cilkrts_worker *w) noexcept {
     return (struct closure_exception *)internal_reducer_lookup(
         w, static_cast<void *>(&exception_reducer), sizeof(exception_reducer),
         reinterpret_cast<void *>(init_exception_reducer),
@@ -88,7 +88,7 @@ struct closure_exception *get_exception_reducer(__cilkrts_worker *w) {
 // Try to get the current view of the exception-reducer state, but return NULL
 // if no view exists.
 struct closure_exception *
-get_exception_reducer_or_null(__cilkrts_worker *w) {
+get_exception_reducer_or_null(__cilkrts_worker *w) noexcept {
     void *key = (void *)(&exception_reducer);
     struct hyper_table *table = get_local_hyper_table_or_null(w);
     if (NULL == table)
@@ -106,7 +106,7 @@ get_exception_reducer_or_null(__cilkrts_worker *w) {
 
 // Destroy the current view of the exception-reducer state.
 void clear_exception_reducer(__cilkrts_worker *w,
-                             struct closure_exception *exn_r) {
+                             struct closure_exception *exn_r) noexcept {
     CILK_ASSERT_NULL(exn_r->throwing_fiber);
     free(exn_r);
     internal_reducer_remove(w, &exception_reducer);
@@ -179,7 +179,7 @@ uncilkify(global_state *g, __cilkrts_stack_frame *sf) {
 
 // Custom routine to resume handling an exception after leaving a cilkified
 // region.
-__attribute__((always_inline)) static void
+__attribute__((always_inline,noreturn)) static void
 resume_from_last_frame(__cilkrts_worker *w, __cilkrts_stack_frame *sf,
                  struct _Unwind_Exception *ue_header) {
     cilkrts_alert(CFRAME, "resume_from_last_frame %p", (void *)sf);
@@ -193,7 +193,8 @@ resume_from_last_frame(__cilkrts_worker *w, __cilkrts_stack_frame *sf,
 
     // Terminate the Cilkified region.
     uncilkify(w->g, sf);
-    _Unwind_Resume(ue_header); // noreturn, although not marked as such
+    _Unwind_Resume(ue_header); // noreturn
+    __builtin_unreachable();
 }
 
 extern "C"
@@ -268,6 +269,7 @@ _Unwind_Reason_Code __cilk_personality_internal(
             // work on macOS.
             sf->flags &= ~CILK_FRAME_EXCEPTION_PENDING;
             _Unwind_RaiseException(exn); // noreturn
+            __builtin_unreachable();
         }
 
         // Record whether this frame is detached, which indicates that it's a

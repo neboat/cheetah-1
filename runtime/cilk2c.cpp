@@ -20,8 +20,10 @@ struct closure_exception exception_reducer = {
   .throwing_fiber = nullptr
 };
 
-extern void _Unwind_Resume(struct _Unwind_Exception *);
-extern _Unwind_Reason_Code _Unwind_RaiseException(struct _Unwind_Exception *);
+extern __attribute__((noreturn))
+void _Unwind_Resume(struct _Unwind_Exception *);
+extern __attribute__((noreturn))
+_Unwind_Reason_Code _Unwind_RaiseException(struct _Unwind_Exception *);
 
 CHEETAH_INTERNAL struct cilkrts_callbacks cilkrts_callbacks = {
     0, 0, false, {NULL}, {NULL}};

@@ -50,9 +50,9 @@ CHEETAH_INTERNAL
 void local_hyper_table_free(hyper_table *table);
 
 CHEETAH_INTERNAL
-bool remove_hyperobject(hyper_table *table, uintptr_t key);
+bool remove_hyperobject(hyper_table *table, uintptr_t key) noexcept;
 CHEETAH_INTERNAL
-bool insert_hyperobject(hyper_table *table, struct bucket b);
+bool insert_hyperobject(hyper_table *table, struct bucket b) noexcept;
 
 CHEETAH_INTERNAL
 hyper_table *merge_two_hts(hyper_table *__restrict left,

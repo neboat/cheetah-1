@@ -47,12 +47,12 @@ extern __thread __cilkrts_worker *__cilkrts_tls_worker;
 extern __thread struct cilk_fiber *__cilkrts_current_fh;
 extern bool __cilkrts_need_to_cilkify;
 
-static inline __attribute__((always_inline)) __cilkrts_worker *
+static inline __attribute__((always_inline,nothrow)) __cilkrts_worker *
 __cilkrts_get_tls_worker(void) {
     return __cilkrts_tls_worker;
 }
 
-static inline __attribute__((always_inline)) __cilkrts_worker *
+static inline __attribute__((always_inline,nothrow)) __cilkrts_worker *
 get_worker_from_stack(const __cilkrts_stack_frame *sf) {
     // Although we can get the current worker by calling
     // __cilkrts_get_tls_worker(), that method accesses the worker via TLS,
@@ -110,20 +110,21 @@ struct closure_exception {
 // Reducer structure for handling exceptions thrown in parallel.
 extern struct closure_exception exception_reducer;
 // Init method for exception reducer.
-CHEETAH_INTERNAL void init_exception_reducer(void *v);
+CHEETAH_INTERNAL void init_exception_reducer(void *v) noexcept;
 // Reduce method for exception reducer.
-CHEETAH_INTERNAL void reduce_exception_reducer(void *l, void *r);
+CHEETAH_INTERNAL void reduce_exception_reducer(void *l, void *r) noexcept;
 // Retrieve the exception stored in the local view of the exception reducer.
 CHEETAH_INTERNAL struct closure_exception *
-get_exception_reducer(__cilkrts_worker *w);
+get_exception_reducer(__cilkrts_worker *w) noexcept;
 // Retrieve the exception stored in the local view of the exception reducer, or
 // NULL if there is no local view..
 CHEETAH_INTERNAL struct closure_exception *
-get_exception_reducer_or_null(__cilkrts_worker *w);
+get_exception_reducer_or_null(__cilkrts_worker *w) noexcept;
 // Free resources used for a local view of the exception reducer.  This method
 // does not deallocate the exception
 CHEETAH_INTERNAL void clear_exception_reducer(__cilkrts_worker *w,
-                                              struct closure_exception *exn_r);
+                                              struct closure_exception *exn_r)
+  noexcept;
 
 #ifdef __cplusplus
 }
