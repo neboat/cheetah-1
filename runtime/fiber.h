@@ -41,7 +41,7 @@ struct cilk_fiber_pool {
 // Supported functions
 //===============================================================
 
-static inline __attribute__((always_inline)) void
+static inline __attribute__((always_inline,nothrow)) void
 sysdep_save_fp_ctrl_state(__cilkrts_stack_frame *sf) {
 #ifdef CHEETAH_SAVE_MXCSR
 #if 1
@@ -60,7 +60,7 @@ sysdep_save_fp_ctrl_state(__cilkrts_stack_frame *sf) {
  * spawn.  This should be called each time a frame is resumed.  OpenCilk
  * only saves MXCSR.  The 80387 status word is obsolete.
  */
-static inline __attribute__((always_inline)) void
+static inline __attribute__((always_inline,nothrow)) void
 sysdep_restore_fp_state(__cilkrts_stack_frame *sf) {
     /* TODO: Find a way to do this only when using floating point. */
 #ifdef CHEETAH_SAVE_MXCSR
@@ -129,8 +129,10 @@ void cilk_fiber_deallocate_to_pool(__cilkrts_worker *w,
                                    struct cilk_fiber *fiber);
 
 #if CILK_ENABLE_ASAN_HOOKS
-void sanitizer_start_switch_fiber(struct cilk_fiber *fiber);
-void sanitizer_finish_switch_fiber(void);
+CHEETAH_INTERNAL
+void sanitizer_start_switch_fiber(struct cilk_fiber *fiber) __CILKRTS_NOTHROW;
+CHEETAH_INTERNAL
+void sanitizer_finish_switch_fiber(void) __CILKRTS_NOTHROW;
 CHEETAH_INTERNAL void sanitizer_poison_fiber(struct cilk_fiber *fiber);
 CHEETAH_INTERNAL void sanitizer_unpoison_fiber(struct cilk_fiber *fiber);
 #else

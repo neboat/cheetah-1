@@ -4,7 +4,9 @@
 #include "cilk-internal.h"
 
 // For invoke, the global state is implied.
-void __cilkrts_internal_invoke_cilkified_root(__cilkrts_stack_frame *sf);
+// Exceptions never except invoke but may escape exit.
+void __cilkrts_internal_invoke_cilkified_root(__cilkrts_stack_frame *sf)
+  __CILKRTS_NOTHROW;
 void __cilkrts_internal_exit_cilkified_root(global_state *g, __cilkrts_stack_frame *sf);
 
 // Used by Cilksan to set nworkers to 1 and force reduction

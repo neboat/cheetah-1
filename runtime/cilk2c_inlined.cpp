@@ -176,8 +176,7 @@ __cilkrts_detach(__cilkrts_stack_frame *sf, __cilkrts_stack_frame *parent)
     w->tail.store(tail, std::memory_order_release);
 }
 
-__attribute__((always_inline)) void __cilk_sync(__cilkrts_stack_frame *sf)
-  noexcept {
+__attribute__((always_inline)) void __cilk_sync(__cilkrts_stack_frame *sf) {
     if (sf->flags & CILK_FRAME_UNSYNCHED || USE_EXTENSION) {
         if (sf->flags & CILK_FRAME_UNSYNCHED) {
             if (__builtin_setjmp(sf->ctx) == 0) {

@@ -70,10 +70,10 @@ uint32_t __cilkrts_cilk_for_grainsize_32(uint32_t n) __CILKRTS_NOTHROW;
 uint64_t __cilkrts_cilk_for_grainsize_64(uint64_t n) __CILKRTS_NOTHROW;
 
 // Performs runtime operations to handle a cilk_sync.
-void __cilk_sync(struct __cilkrts_stack_frame *sf) __CILKRTS_NOTHROW;
+void __cilk_sync(struct __cilkrts_stack_frame *sf);
 
 // Implements a cilk_sync when the cilk_sync is guaranteed not to produce an
-// exception that needs to be handled.
+// exception that needs to be handled locally.
 void __cilk_sync_nothrow(struct __cilkrts_stack_frame *sf);
 
 void *__cilkrts_reducer_lookup(void *key, size_t size,

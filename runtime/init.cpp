@@ -464,7 +464,8 @@ static inline __attribute__((noinline)) void boss_wait_helper(void) {
 
 // Setup runtime structures to start a new Cilkified region.  Executed by the
 // Cilkifying thread in cilkify().
-void __cilkrts_internal_invoke_cilkified_root(__cilkrts_stack_frame *sf) {
+void __cilkrts_internal_invoke_cilkified_root(__cilkrts_stack_frame *sf)
+  __CILKRTS_NOTHROW {
     global_state *g = default_cilkrts;
 
     // Initialize the boss thread's runtime structures, if necessary.

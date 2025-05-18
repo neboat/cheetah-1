@@ -73,7 +73,7 @@ set(CHEETAH_RELEASE_OPTIONS -O3)
 # Disable exceptions.  Inlining functions with personalities
 # or calls to terminate from bitcode does not work.
 set(CHEETAH_BITCODE_ABI_COMPILE_FLAGS ${CHEETAH_COMPILE_FLAGS}
-  -fno-exceptions -emit-llvm)
+ -emit-llvm)
 set(CHEETAH_BITCODE_ABI_COMPILE_DEFS ${CHEETAH_COMPILE_DEFS}
   "CHEETAH_API_CONSUMER=1"
   "CHEETAH_INTERNAL="

@@ -170,7 +170,7 @@ static AsanUnpoisonMemoryRegionFuncPtr getUnpoisonMemoryRegionFunc() {
     return NULL;
 }
 
-void sanitizer_start_switch_fiber(struct cilk_fiber *fiber) {
+void sanitizer_start_switch_fiber(struct cilk_fiber *fiber) __CILKRTS_NOTHROW {
     if (!have_sanitizer_start_switch_fiber_fn) {
         sanitizer_start_switch_fiber_fn = getStartSwitchFiberFunc();
         have_sanitizer_start_switch_fiber_fn = true;
@@ -216,7 +216,7 @@ void sanitizer_start_switch_fiber(struct cilk_fiber *fiber) {
     }
 }
 
-void sanitizer_finish_switch_fiber() {
+void sanitizer_finish_switch_fiber() __CILKRTS_NOTHROW {
     if (!have_sanitizer_finish_switch_fiber_fn) {
         sanitizer_finish_switch_fiber_fn = getFinishSwitchFiberFunc();
         have_sanitizer_finish_switch_fiber_fn = true;
