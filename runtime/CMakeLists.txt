@@ -36,10 +36,12 @@ set(CHEETAH_PERSONALITY_CPP_SOURCES
   personality-cpp.cpp
 )
 
+#set_source_files_properties(debug.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
+
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # Add dependent libraries
-set(CHEETAH_COMPILE_FLAGS ${CHEETAH_COMMON_CFLAGS})
+set(CHEETAH_COMPILE_FLAGS ${CHEETAH_COMMON_CFLAGS} -fno-exceptions)
 append_list_if(CHEETAH_HAS_PTHREAD_LIB pthread CHEETAH_COMMON_LIBS)
 append_list_if(CHEETAH_HAS_DL_LIB dl CHEETAH_COMMON_LIBS)
 if (CHEETAH_USE_COMPILER_RT)
