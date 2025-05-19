@@ -164,14 +164,14 @@ static unsigned int parse_alert_level_csv(const char *const alert_csv) {
  * @param alert_csv  A C string that is either a comma-separated list of alert
  *                   level names -or- a single number.
  **/
-void set_alert_level_from_str(const char *const alert_csv) {
+void set_alert_level_from_str(const char *const alert_csv) noexcept {
     if (alert_csv) {
         unsigned int new_alert_lvl = parse_alert_level_csv(alert_csv);
         set_alert_level(new_alert_lvl);
     }
 }
 
-void set_alert_level(unsigned int level) {
+void set_alert_level(unsigned int level) noexcept {
     alert_level = level;
     if (level == 0) {
         flush_alert_log();
@@ -189,7 +189,7 @@ void set_alert_level(unsigned int level) {
     }
 }
 
-void set_debug_level(unsigned int level) { debug_level = level; }
+void set_debug_level(unsigned int level) noexcept { debug_level = level; }
 
 extern const char __cilkrts_assertion_failed[] =
     "%s:%d: cilk assertion failed: %s\n";
@@ -229,7 +229,7 @@ void cilkrts_bug(const char *fmt, ...) {
     abort(); // generate core file
 }
 
-void flush_alert_log() {
+void flush_alert_log() noexcept {
     if (ALERT_LVL == 0)
         return;
     if (alert_log == NULL) {
