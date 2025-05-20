@@ -36,6 +36,8 @@ void __cilkrts_detach(struct __cilkrts_stack_frame *sf,
 
 // Inserted on return from a spawning function that is not itself a spawn
 // helper.  Performs Cilk's return protocol for such functions.
+// Marked API because it is used inside the library by personality.cpp.
+CHEETAH_API
 void __cilkrts_leave_frame(struct __cilkrts_stack_frame *sf);
 // Inserted on return from a spawn-helper function.  Performs Cilk's return
 // protocol for such functions.
