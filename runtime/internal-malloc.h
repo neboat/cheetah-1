@@ -34,7 +34,7 @@ static inline void *cilk_aligned_alloc(size_t alignment, size_t size) {
     void *ptr;
     if (posix_memalign(&ptr, alignment, size) == 0)
         return ptr;
-    return NULL;
+    return nullptr;
 #endif
 }
 

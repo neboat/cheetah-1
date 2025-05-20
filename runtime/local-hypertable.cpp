@@ -8,8 +8,8 @@
 #include "local-hypertable.h"
 
 static void reducer_base_init(reducer_base *rb) {
-    rb->view = NULL;
-    rb->reduce_fn = NULL;
+    rb->view = nullptr;
+    rb->reduce_fn = nullptr;
 }
 
 static void make_tombstone(uintptr_t *key) { *key = KEY_DELETED; }
@@ -131,7 +131,7 @@ struct bucket *__cilkrts_find_hyperobject_hash(hyper_table *table,
 
         // Found an empty entry?  The probe failed.
         if (is_empty(curr_key))
-            return NULL;
+            return nullptr;
 
         // Found a tombstone?  Continue the probe.
         if (is_tombstone(curr_key)) {
@@ -149,11 +149,11 @@ struct bucket *__cilkrts_find_hyperobject_hash(hyper_table *table,
 
         // If none of the above cases match, then the probe failed to
         // find the key.
-        return NULL;
+        return nullptr;
     } while (i != tgt);
 
     // The probe failed to find the key.
-    return NULL;
+    return nullptr;
 }
 
 bool remove_hyperobject(hyper_table *table, uintptr_t key) noexcept {
@@ -183,7 +183,7 @@ bool remove_hyperobject(hyper_table *table, uintptr_t key) noexcept {
     struct bucket *entry = find_hyperobject(table, key);
 
     // If entry is NULL, the probe did not find the key.
-    if (NULL == entry)
+    if (nullptr == entry)
         return false;
 
     // The probe found the key and returned a pointer to the entry.
@@ -418,7 +418,7 @@ hyper_table *merge_two_hts(hyper_table *__restrict left,
         // destination table.
         struct bucket *dst_bucket = find_hyperobject(dst, b.key);
 
-        if (NULL == dst_bucket) {
+        if (nullptr == dst_bucket) {
             // The destination table does not contain this key.  Insert the
             // key-value pair from the source table into the destination.
             insert_hyperobject(dst, b);

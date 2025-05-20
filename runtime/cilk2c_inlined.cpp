@@ -228,7 +228,7 @@ __cilkrts_leave_frame(__cilkrts_stack_frame *sf) {
     // __cilkrts_pop_frame, but has been manually inlined to avoid reloading the
     // worker unnecessarily.
     sf->fh->current_stack_frame = parent;
-    sf->call_parent = NULL;
+    sf->call_parent = nullptr;
 
     // Check if sf is the final stack frame, and if so, terminate the Cilkified
     // region.
@@ -277,7 +277,7 @@ __cilkrts_leave_frame_helper(__cilkrts_stack_frame *sf,
         __cilkrts_extend_return_from_spawn(w, &w->extension);
         w->extension = parent->extension;
     }
-    sf->call_parent = NULL;
+    sf->call_parent = nullptr;
 
     CILK_ASSERT(sf->flags & CILK_FRAME_DETACHED);
 
@@ -292,7 +292,7 @@ __cilkrts_leave_frame_helper(__cilkrts_stack_frame *sf,
        DETACHED.  Does it modify flags too? */
     sf->flags &= ~CILK_FRAME_DETACHED;
     if (__builtin_expect(exc > tail, false)) {
-        __cilkrts_exception_handler(w, NULL);
+        __cilkrts_exception_handler(w, nullptr);
         // If Cilk_exception_handler returns this thread won the race and can
         // return to the parent function.
     }
@@ -340,7 +340,7 @@ __cilkrts_pause_frame(__cilkrts_stack_frame *sf, __cilkrts_stack_frame *parent,
     // worker unnecessarily.
     if (spawner)
         sf->fh->current_stack_frame = parent;
-    sf->call_parent = NULL;
+    sf->call_parent = nullptr;
 
     // A __cilkrts_pause_frame may be reached before the spawn-helper frame has
     // detached.  In that case, THE is not required.

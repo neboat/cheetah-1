@@ -187,7 +187,7 @@ static inline int fill_worker_mask_and_get_next_cpu(
     CPU_SET(cpu, worker_mask);
     for (int off = 1; off < group_size; ++off) {
         move_bit(cpu + off * step_in, worker_mask, unassigned_mask);
-        cilkrts_alert(BOOT, NULL, "Bind worker %u to core %d of %d", w_id,
+        cilkrts_alert(BOOT, nullptr, "Bind worker %u to core %d of %d", w_id,
                       cpu + off * step_in, available_cores);
     }
     cpu += step_out;
@@ -316,11 +316,11 @@ void *init_threads_and_enter_scheduler(void *args) {
 #endif // ENABLE_WORKER_PINNING
 
     for (int w = worker_start; w < n_threads; w++) {
-        int status = pthread_create(&g->threads[w], NULL, scheduler_thread_proc,
+        int status = pthread_create(&g->threads[w], nullptr, scheduler_thread_proc,
                                     &g->worker_args[w]);
 
         if (status != 0) {
-            cilkrts_bug(NULL, "Cilk: thread creation (%u) failed: %s", w,
+            cilkrts_bug(nullptr, "Cilk: thread creation (%u) failed: %s", w,
                         strerror(status));
         }
 
@@ -354,12 +354,12 @@ static void threads_init(global_state *g) {
 
     // Make sure we are supposed to create worker threads
     if (worker_start < (int)g->nworkers) {
-        int status = pthread_create(&g->threads[worker_start], NULL,
+        int status = pthread_create(&g->threads[worker_start], nullptr,
                                     init_threads_and_enter_scheduler,
                                     &g->worker_args[worker_start]);
 
         if (status != 0) {
-            cilkrts_bug(NULL, "Cilk: thread creation (%u) failed: %s",
+            cilkrts_bug(nullptr, "Cilk: thread creation (%u) failed: %s",
                         worker_start, strerror(status));
         }
     }
@@ -384,7 +384,7 @@ global_state *__cilkrts_startup(int argc, char *argv[]) {
 
 // Global constructor for starting up the default cilkrts.
 __attribute__((constructor)) void __default_cilkrts_startup() {
-    default_cilkrts = __cilkrts_startup(0, NULL);
+    default_cilkrts = __cilkrts_startup(0, nullptr);
 
     for (unsigned i = 0; i < cilkrts_callbacks.last_init; ++i)
         cilkrts_callbacks.init[i]();
@@ -421,9 +421,9 @@ static void __cilkrts_stop_workers(global_state *g) {
     // Join the worker pthreads
     unsigned int worker_start = 1;
     for (unsigned int i = worker_start; i < g->nworkers; i++) {
-        int status = pthread_join(g->threads[i], NULL);
+        int status = pthread_join(g->threads[i], nullptr);
         if (status != 0)
-            cilkrts_bug(NULL, "Cilk runtime error: thread join (%u) failed: %s",
+            cilkrts_bug(nullptr, "Cilk runtime error: thread join (%u) failed: %s",
                         i, strerror(status));
     }
     cilkrts_alert(BOOT, "(threads_join) All workers joined!");
@@ -723,7 +723,7 @@ static void worker_terminate(__cilkrts_worker *w, void *data) {
 }
 
 static void workers_terminate(global_state *g) {
-    for_each_worker_rev(g, worker_terminate, NULL);
+    for_each_worker_rev(g, worker_terminate, nullptr);
 }
 
 static void sum_allocations(__cilkrts_worker *w, void *data) {
@@ -788,7 +788,7 @@ CHEETAH_INTERNAL void __cilkrts_shutdown(global_state *g) {
     workers_terminate(g);
     flush_alert_log();
     /* This needs to be before global_state_terminate for good stats. */
-    for_each_worker(g, wrap_fiber_pool_destroy, NULL);
+    for_each_worker(g, wrap_fiber_pool_destroy, nullptr);
     // global_state_terminate collects and prints out stats, and thus
     // should occur *BEFORE* worker_deinit, because worker_deinit
     // deinitializes worker-related data structures which may

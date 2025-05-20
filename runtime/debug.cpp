@@ -19,7 +19,7 @@ CHEETAH_INTERNAL unsigned int debug_level = 0;
 /* To reduce overhead of logging messages are accumulated into memory
    and written to stderr in batches of about 5,000 bytes. */
 static size_t alert_log_size = 0, alert_log_offset = 0;
-static char *alert_log = NULL;
+static char *alert_log = nullptr;
 
 /**
  * Represents a usable alert level with a human-readable
@@ -94,7 +94,7 @@ static unsigned int parse_alert_level_str(const char *const alert_str) {
                               sizeof(search_key), alert_name_comparison
         );
 
-    if (table_element != NULL) {
+    if (table_element != nullptr) {
         return table_element->mask_value;
     }
     
@@ -180,7 +180,7 @@ void set_alert_level(unsigned int level) {
     if (level & ALERT_NOBUF) {
         return;
     }
-    if (alert_log == NULL) {
+    if (alert_log == nullptr) {
         alert_log_size = 5000;
         alert_log = static_cast<char *>(malloc(alert_log_size));
         if (alert_log) {
@@ -232,7 +232,7 @@ void cilkrts_bug(const char *fmt, ...) {
 void flush_alert_log() {
     if (ALERT_LVL == 0)
         return;
-    if (alert_log == NULL) {
+    if (alert_log == nullptr) {
         return;
     }
     if (alert_log_offset > 0) {
@@ -242,7 +242,7 @@ void flush_alert_log() {
     }
     alert_log_size = 0;
     free(alert_log);
-    alert_log = NULL;
+    alert_log = nullptr;
 }
 
 #undef cilkrts_alert

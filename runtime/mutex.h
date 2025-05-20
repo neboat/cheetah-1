@@ -40,7 +40,7 @@ static inline void cilk_mutex_init(cilk_mutex *lock) {
         exit(-1);
     }
 #else
-    pthread_mutex_init(&(lock->posix), NULL);
+    pthread_mutex_init(&(lock->posix), nullptr);
 #endif
 }
 

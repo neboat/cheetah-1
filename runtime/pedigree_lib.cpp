@@ -9,7 +9,7 @@
 uint64_t __pedigree_dprng_seed = 0x8c679c168e6bf733ul;
 uint64_t __pedigree_dprng_m_X = 0;
 CHEETAH_INTERNAL
-__pedigree_frame root_frame = {.pedigree = {.rank = 0, .parent = NULL},
+__pedigree_frame root_frame = {.pedigree = {.rank = 0, .parent = nullptr},
                                .rank = 0,
                                .dprng_dotproduct = 0,
                                .dprng_depth = 0};
@@ -21,7 +21,7 @@ CHEETAH_INTERNAL
 void __cilkrts_deinit_dprng(void) {
     if (__pedigree_dprng_m_array) {
         free(__pedigree_dprng_m_array);
-        __pedigree_dprng_m_array = NULL;
+        __pedigree_dprng_m_array = nullptr;
     }
 }
 

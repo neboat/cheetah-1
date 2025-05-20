@@ -58,23 +58,23 @@ bool exception_reducer_is_empty() noexcept {
 // Identity method for the exception reducer.
 static void init_exception_reducer(void *v) noexcept {
     struct closure_exception *ex = (struct closure_exception *)(v);
-    ex->exn = NULL;
-    ex->reraise_cfa = NULL;
-    ex->parent_rsp = NULL;
-    ex->throwing_fiber = NULL;
+    ex->exn = nullptr;
+    ex->reraise_cfa = nullptr;
+    ex->parent_rsp = nullptr;
+    ex->throwing_fiber = nullptr;
 }
 
 // Reduce method for the exception reducer.
 static void reduce_exception_reducer(void *l, void *r) noexcept {
     struct closure_exception *lex = (struct closure_exception *)(l);
     struct closure_exception *rex = (struct closure_exception *)(r);
-    if (lex->exn == NULL) {
+    if (lex->exn == nullptr) {
         lex->exn = rex->exn;
-        rex->exn = NULL;
+        rex->exn = nullptr;
     }
-    if (rex->exn != NULL) {
+    if (rex->exn != nullptr) {
         _Unwind_DeleteException((struct _Unwind_Exception *)(rex->exn));
-        rex->exn = NULL;
+        rex->exn = nullptr;
     }
     // Use right-holder logic for reraise_cfa, parent_rsp, and throwing_fiber.
     lex->reraise_cfa = rex->reraise_cfa;
@@ -152,9 +152,9 @@ sync_in_personality(__cilkrts_worker *w, __cilkrts_stack_frame *sf,
         deque_unlock_self(deques, self);
 
         // save the current fiber for further stack unwinding.
-        if (exn_r->throwing_fiber == NULL) {
+        if (exn_r->throwing_fiber == nullptr) {
             exn_r->throwing_fiber = t->fiber;
-            t->fiber = NULL;
+            t->fiber = nullptr;
         }
 
         // For now, use this flag to indicate that we are setjmping from the
@@ -198,7 +198,7 @@ resume_from_last_frame(__cilkrts_worker *w, __cilkrts_stack_frame *sf,
     // Pop this frame off the cactus stack.  This logic used to be in
     // __cilkrts_pop_frame, but has been manually inlined to avoid reloading the
     // worker unnecessarily.
-    sf->call_parent = NULL;
+    sf->call_parent = nullptr;
 
     // Terminate the Cilkified region.
     uncilkify(w->g, sf);
@@ -251,22 +251,22 @@ _Unwind_Reason_Code __cilk_personality_internal(
         // performing __cilkrts_leave_frame.
         bool in_reraised_cfa = false;
         bool skip_leaveframe = false;
-        if (exn_r != NULL) {
+        if (exn_r != nullptr) {
             in_reraised_cfa = (exn_r->reraise_cfa == (char *)get_cfa(context));
-            skip_leaveframe = ((exn_r->reraise_cfa != NULL) && !in_reraised_cfa);
+            skip_leaveframe = ((exn_r->reraise_cfa != nullptr) && !in_reraised_cfa);
         }
         if (in_reraised_cfa) {
-            exn_r->reraise_cfa = NULL;
+            exn_r->reraise_cfa = nullptr;
         }
 
         // If the saved exception state contains a different exception than what
         // this personality function is handling, raise that one instead.
-        if ((exn_r != NULL) && (exn_r->exn != NULL) &&
+        if ((exn_r != nullptr) && (exn_r->exn != nullptr) &&
             (exn_r->exn != (char *)ue_header)) {
 
             struct _Unwind_Exception *exn =
                     (struct _Unwind_Exception *)(exn_r->exn);
-            exn_r->exn = NULL;
+            exn_r->exn = nullptr;
             cilkrts_alert(EXCEPT,
                           "cilk_personality calling RaiseException %p\n",
                           (void *)sf);
@@ -303,12 +303,12 @@ _Unwind_Reason_Code __cilk_personality_internal(
             if (isLastFrame) {
                 // If we're leaving the last Cilk stack frame, we will be
                 // longjmping back to the original program call stack.
-                if (exn_r != NULL) {
+                if (exn_r != nullptr) {
                     if (exn_r->throwing_fiber) {
                         // Free any fiber we're saving for stack-unwinding,
                         // since we don't need it anymore.
                         cilk_fiber_deallocate_to_pool(w, exn_r->throwing_fiber);
-                        exn_r->throwing_fiber = NULL;
+                        exn_r->throwing_fiber = nullptr;
                     }
                     // Free the exception-reducer view.
                     clear_exception_reducer(w, exn_r);
@@ -316,10 +316,10 @@ _Unwind_Reason_Code __cilk_personality_internal(
                 resume_from_last_frame(w, sf, ue_header); // noreturn
             }
             __cilkrts_leave_frame(sf);
-            if (exn_r != NULL) {
+            if (exn_r != nullptr) {
                 // We have unwound the stack past the point of parent_rsp, so
                 // discard it.
-                exn_r->parent_rsp = NULL;
+                exn_r->parent_rsp = nullptr;
             }
         }
 

@@ -87,87 +87,87 @@ static bool have_sanitizer_start_switch_fiber_fn = false;
 static bool have_sanitizer_finish_switch_fiber_fn = false;
 static bool have_asan_unpoison_memory_region_fn = false;
 static bool have_asan_poison_memory_region_fn = false;
-static SanitizerStartSwitchFiberFuncPtr sanitizer_start_switch_fiber_fn = NULL;
-static SanitizerFinishSwitchFiberFuncPtr sanitizer_finish_switch_fiber_fn = NULL;
-static AsanPoisonMemoryRegionFuncPtr asan_poison_memory_region_fn = NULL;
-static AsanUnpoisonMemoryRegionFuncPtr asan_unpoison_memory_region_fn = NULL;
+static SanitizerStartSwitchFiberFuncPtr sanitizer_start_switch_fiber_fn = nullptr;
+static SanitizerFinishSwitchFiberFuncPtr sanitizer_finish_switch_fiber_fn = nullptr;
+static AsanPoisonMemoryRegionFuncPtr asan_poison_memory_region_fn = nullptr;
+static AsanUnpoisonMemoryRegionFuncPtr asan_unpoison_memory_region_fn = nullptr;
 
-__thread void *fake_stack_save = NULL;
-const __thread void *old_thread_stack = NULL;
+__thread void *fake_stack_save = nullptr;
+const __thread void *old_thread_stack = nullptr;
 __thread size_t old_thread_stacksize = 0;
-__thread struct cilk_fiber *current_fiber = NULL;
+__thread struct cilk_fiber *current_fiber = nullptr;
 __thread bool on_fiber = false;
 
 static SanitizerStartSwitchFiberFuncPtr getStartSwitchFiberFunc() {
-    SanitizerStartSwitchFiberFuncPtr fn = NULL;
+    SanitizerStartSwitchFiberFuncPtr fn = nullptr;
 
     // Check whether weak reference points to statically linked function.
-    if (NULL != (fn = &__sanitizer_start_switch_fiber_weak)) {
+    if (nullptr != (fn = &__sanitizer_start_switch_fiber_weak)) {
         return fn;
     }
 
     // Check whether we can find a dynamically linked function.
-    if (NULL != (fn = (SanitizerStartSwitchFiberFuncPtr)dlsym(
+    if (nullptr != (fn = (SanitizerStartSwitchFiberFuncPtr)dlsym(
                      RTLD_DEFAULT, "__sanitizer_start_switch_fiber"))) {
         return fn;
     }
 
     // Couldn't find the function at all.
-    return NULL;
+    return nullptr;
 }
 
 static SanitizerFinishSwitchFiberFuncPtr getFinishSwitchFiberFunc() {
-    SanitizerFinishSwitchFiberFuncPtr fn = NULL;
+    SanitizerFinishSwitchFiberFuncPtr fn = nullptr;
 
     // Check whether weak reference points to statically linked function.
-    if (NULL != (fn = &__sanitizer_finish_switch_fiber_weak)) {
+    if (nullptr != (fn = &__sanitizer_finish_switch_fiber_weak)) {
         return fn;
     }
 
     // Check whether we can find a dynamically linked function.
-    if (NULL != (fn = (SanitizerFinishSwitchFiberFuncPtr)dlsym(
+    if (nullptr != (fn = (SanitizerFinishSwitchFiberFuncPtr)dlsym(
                      RTLD_DEFAULT, "__sanitizer_finish_switch_fiber"))) {
         return fn;
     }
 
     // Couldn't find the function at all.
-    return NULL;
+    return nullptr;
 }
 
 static AsanPoisonMemoryRegionFuncPtr getPoisonMemoryRegionFunc() {
-    AsanPoisonMemoryRegionFuncPtr fn = NULL;
+    AsanPoisonMemoryRegionFuncPtr fn = nullptr;
 
     // Check whether weak reference points to statically linked function.
-    if (NULL != (fn = &__asan_poison_memory_region_weak)) {
+    if (nullptr != (fn = &__asan_poison_memory_region_weak)) {
         return fn;
     }
 
     // Check whether we can find a dynamically linked function.
-    if (NULL != (fn = (AsanPoisonMemoryRegionFuncPtr)dlsym(
+    if (nullptr != (fn = (AsanPoisonMemoryRegionFuncPtr)dlsym(
                          RTLD_DEFAULT, "__asan_poison_memory_region"))) {
         return fn;
     }
 
     // Couldn't find the function at all.
-    return NULL;
+    return nullptr;
 }
 
 static AsanUnpoisonMemoryRegionFuncPtr getUnpoisonMemoryRegionFunc() {
-    AsanUnpoisonMemoryRegionFuncPtr fn = NULL;
+    AsanUnpoisonMemoryRegionFuncPtr fn = nullptr;
 
     // Check whether weak reference points to statically linked function.
-    if (NULL != (fn = &__asan_unpoison_memory_region_weak)) {
+    if (nullptr != (fn = &__asan_unpoison_memory_region_weak)) {
         return fn;
     }
 
     // Check whether we can find a dynamically linked function.
-    if (NULL != (fn = (AsanUnpoisonMemoryRegionFuncPtr)dlsym(
+    if (nullptr != (fn = (AsanUnpoisonMemoryRegionFuncPtr)dlsym(
                          RTLD_DEFAULT, "__asan_unpoison_memory_region"))) {
         return fn;
     }
 
     // Couldn't find the function at all.
-    return NULL;
+    return nullptr;
 }
 
 void sanitizer_start_switch_fiber(struct cilk_fiber *fiber) __CILKRTS_NOTHROW {
@@ -175,7 +175,7 @@ void sanitizer_start_switch_fiber(struct cilk_fiber *fiber) __CILKRTS_NOTHROW {
         sanitizer_start_switch_fiber_fn = getStartSwitchFiberFunc();
         have_sanitizer_start_switch_fiber_fn = true;
     }
-    if (NULL != sanitizer_start_switch_fiber_fn) {
+    if (nullptr != sanitizer_start_switch_fiber_fn) {
         if (fiber) {
             char *stack_low = fiber->stack_low;
             char *stack_high = fiber->get_stack_start();
@@ -204,7 +204,7 @@ void sanitizer_start_switch_fiber(struct cilk_fiber *fiber) __CILKRTS_NOTHROW {
                     &current_fiber->fake_stack_save,
                     old_thread_stack, old_thread_stacksize);
                 // Clear the current fiber.
-                current_fiber = NULL;
+                current_fiber = nullptr;
             } else {
                 // The worker is already outside of Cilk user code.  Save the
                 // fake_stack for this worker's default stack into
@@ -221,7 +221,7 @@ void sanitizer_finish_switch_fiber() __CILKRTS_NOTHROW {
         sanitizer_finish_switch_fiber_fn = getFinishSwitchFiberFunc();
         have_sanitizer_finish_switch_fiber_fn = true;
     }
-    if (NULL != sanitizer_finish_switch_fiber_fn) {
+    if (nullptr != sanitizer_finish_switch_fiber_fn) {
         if (current_fiber) {
             // The worker switched into Cilk user code.  Restore the fake_stack
             // from the current fiber's header.
@@ -238,12 +238,12 @@ void sanitizer_finish_switch_fiber() __CILKRTS_NOTHROW {
                 // The worker is remaining in Cilk user code.  Don't save the
                 // old stack's parameters.
                 sanitizer_finish_switch_fiber_fn(
-                    current_fiber->fake_stack_save, NULL, NULL);
+                    current_fiber->fake_stack_save, nullptr, nullptr);
             }
         } else {
             // The worker switched out of Cilk user cude.  Restore the
             // fake_stack from fake_stack_save.
-            sanitizer_finish_switch_fiber_fn(fake_stack_save, NULL, NULL);
+            sanitizer_finish_switch_fiber_fn(fake_stack_save, nullptr, nullptr);
             // Record that the worker is no longer in Cilk user code.
             on_fiber = false;
         }
@@ -255,7 +255,7 @@ void sanitizer_unpoison_fiber(struct cilk_fiber *fiber) {
         asan_unpoison_memory_region_fn = getUnpoisonMemoryRegionFunc();
         have_asan_unpoison_memory_region_fn = true;
     }
-    if (NULL != asan_unpoison_memory_region_fn) {
+    if (nullptr != asan_unpoison_memory_region_fn) {
         char *stack_high = fiber->get_stack_start();
         asan_unpoison_memory_region_fn(
             fiber->stack_low, (size_t)(stack_high - fiber->stack_low));
@@ -267,7 +267,7 @@ void sanitizer_poison_fiber(struct cilk_fiber *fiber) {
         asan_poison_memory_region_fn = getPoisonMemoryRegionFunc();
         have_asan_poison_memory_region_fn = true;
     }
-    if (NULL != asan_poison_memory_region_fn) {
+    if (nullptr != asan_poison_memory_region_fn) {
         char *stack_high = fiber->get_stack_start();
         asan_poison_memory_region_fn(
             fiber->stack_low, (size_t)(stack_high - fiber->stack_low));
@@ -294,10 +294,10 @@ struct cilk_fiber *make_stack(size_t stack_size) {
         0, stack_pages * page_size, PROT_READ | PROT_WRITE,
         MAP_STACK_FLAGS, -1, 0);
     if (MAP_FAILED == alloc_low) {
-        cilkrts_bug(NULL, "Cilk: stack mmap failed");
+        cilkrts_bug(nullptr, "Cilk: stack mmap failed");
         /* Currently unreached.  TODO: Investigate more graceful
            error handling. */
-        return NULL;
+        return nullptr;
     }
     char *alloc_high = alloc_low + stack_pages * page_size;
     char *stack_low = alloc_low + page_size;
@@ -322,7 +322,7 @@ static void free_stack(struct cilk_fiber *f) {
     char *alloc_low = f->get_fiber_start();
     char *alloc_high = f->get_fiber_end();
     if (munmap(f->alloc_low, alloc_high - alloc_low) < 0)
-        cilkrts_bug(NULL, "Cilk: stack munmap failed");
+        cilkrts_bug(nullptr, "Cilk: stack munmap failed");
     /* f is now an invalid pointer */
 }
 

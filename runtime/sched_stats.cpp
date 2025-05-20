@@ -240,7 +240,7 @@ void cilk_sched_stats_print(struct global_state *g) {
     fprintf(stderr, COUNT_DESC, g->stats.onesen_rqsts);
     fprintf(stderr, "\n");
 
-    for_each_worker(g, &sched_stats_reset_worker, NULL);
+    for_each_worker(g, &sched_stats_reset_worker, nullptr);
 }
 
 /*

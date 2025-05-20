@@ -207,7 +207,7 @@ static inline struct bucket *find_hyperobject_linear(hyper_table *table,
         if (buckets[i].key == key)
             return &buckets[i];
 
-    return NULL;
+    return nullptr;
 }
 
 struct bucket *__cilkrts_find_hyperobject_hash(hyper_table *table,

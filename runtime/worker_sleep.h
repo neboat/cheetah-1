@@ -363,7 +363,7 @@ handle_failed_steal_attempts(global_state *const rts, worker_id self,
             // have to worry about the fail count overflowing.
             fails = MAX_FAILS;
             const struct timespec sleeptime = {.tv_sec = 0, .tv_nsec = SLEEP_NSEC};
-            nanosleep(&sleeptime, NULL);
+            nanosleep(&sleeptime, nullptr);
         } else {
 #if ENABLE_THIEF_SLEEP
             if (SENTINEL_THRESHOLD == fails) {
@@ -410,7 +410,7 @@ handle_failed_steal_attempts(global_state *const rts, worker_id self,
                         .tv_sec = 0,
                         .tv_nsec =
                             (fails > SLEEP_THRESHOLD) ? SLEEP_NSEC : NAP_NSEC};
-                    nanosleep(&sleeptime, NULL);
+                    nanosleep(&sleeptime, nullptr);
                 }
             } else {
 #if ENABLE_THIEF_SLEEP
@@ -473,7 +473,7 @@ handle_failed_steal_attempts(global_state *const rts, worker_id self,
                             .tv_sec = 0,
                             .tv_nsec = (fails > SLEEP_THRESHOLD) ? SLEEP_NSEC
                                                                  : NAP_NSEC};
-                        nanosleep(&sleeptime, NULL);
+                        nanosleep(&sleeptime, nullptr);
                     }
 #else
                 if (false) {
@@ -488,7 +488,7 @@ handle_failed_steal_attempts(global_state *const rts, worker_id self,
                         .tv_sec = 0,
                         .tv_nsec =
                             (fails > SLEEP_THRESHOLD) ? SLEEP_NSEC : NAP_NSEC};
-                    nanosleep(&sleeptime, NULL);
+                    nanosleep(&sleeptime, nullptr);
                 }
             }
         }
