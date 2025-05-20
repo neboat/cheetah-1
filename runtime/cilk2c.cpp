@@ -12,14 +12,6 @@
 #include "rts-config.h"
 #include "scheduler.h"
 
-CHEETAH_INTERNAL
-struct closure_exception exception_reducer = {
-  .exn = nullptr,
-  .reraise_cfa = nullptr,
-  .parent_rsp = nullptr,
-  .throwing_fiber = nullptr
-};
-
 extern __attribute__((noreturn))
 void _Unwind_Resume(struct _Unwind_Exception *);
 extern __attribute__((noreturn))
@@ -85,6 +77,7 @@ void __cilkrts_check_exception_raise(__cilkrts_stack_frame *sf) {
 
     if (exn != NULL) {
         _Unwind_RaiseException((struct _Unwind_Exception *)exn); // noreturn
+        __builtin_unreachable();
     }
 
     return;
@@ -106,6 +99,7 @@ void __cilkrts_check_exception_resume(__cilkrts_stack_frame *sf) {
 
     if (exn != NULL) {
         _Unwind_Resume((struct _Unwind_Exception *)exn); // noreturn
+        __builtin_unreachable();
     }
 
     return;
@@ -185,12 +179,14 @@ void __cilkrts_sync(__cilkrts_stack_frame *sf) {
 ///////////////////////////////////////////////////////////////////////////
 /// Methods for handling extensions
 
+extern "C"
 void __cilkrts_register_extension(void *extension) {
     __cilkrts_use_extension = true;
     __cilkrts_worker *w = __cilkrts_get_tls_worker();
     w->extension = extension;
 }
 
+extern "C"
 void *__cilkrts_get_extension(void) {
     __cilkrts_worker *w = __cilkrts_get_tls_worker();
     return w->extension;

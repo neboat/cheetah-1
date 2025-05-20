@@ -108,11 +108,6 @@ struct closure_exception {
 };
 
 // Reducer structure for handling exceptions thrown in parallel.
-extern struct closure_exception exception_reducer;
-// Init method for exception reducer.
-CHEETAH_INTERNAL void init_exception_reducer(void *v) noexcept;
-// Reduce method for exception reducer.
-CHEETAH_INTERNAL void reduce_exception_reducer(void *l, void *r) noexcept;
 // Retrieve the exception stored in the local view of the exception reducer.
 CHEETAH_INTERNAL struct closure_exception *
 get_exception_reducer(__cilkrts_worker *w) noexcept;
@@ -125,6 +120,7 @@ get_exception_reducer_or_null(__cilkrts_worker *w) noexcept;
 CHEETAH_INTERNAL void clear_exception_reducer(__cilkrts_worker *w,
                                               struct closure_exception *exn_r)
   noexcept;
+CHEETAH_INTERNAL bool exception_reducer_is_empty() noexcept;
 
 #ifdef __cplusplus
 }

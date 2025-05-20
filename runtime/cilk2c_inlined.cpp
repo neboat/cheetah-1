@@ -44,8 +44,7 @@ __attribute__((always_inline)) unsigned __cilkrts_get_nworkers(void) noexcept {
 // TODO: Figure out how we want to support worker-local storage.
 __attribute__((always_inline))
 unsigned __cilkrts_get_worker_number(void) {
-    __cilkrts_worker *w = __cilkrts_get_tls_worker();
-    if (w)
+    if (__cilkrts_worker *w = __cilkrts_get_tls_worker())
         return w->self;
     // If the worker structure is not yet initialized, pretend we're worker 0.
     return 0;

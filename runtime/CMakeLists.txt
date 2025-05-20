@@ -36,7 +36,7 @@ set(CHEETAH_PERSONALITY_CPP_SOURCES
   personality-cpp.cpp
 )
 
-#set_source_files_properties(debug.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
+#set_source_files_properties(file.cpp PROPERTIES COMPILE_OPTIONS -...)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
@@ -74,8 +74,7 @@ set(CHEETAH_RELEASE_OPTIONS -O3)
 # Setup flags and defs for cheetah bitcode ABI build
 # Disable exceptions.  Inlining functions with personalities
 # or calls to terminate from bitcode does not work.
-set(CHEETAH_BITCODE_ABI_COMPILE_FLAGS ${CHEETAH_COMPILE_FLAGS}
- -emit-llvm)
+set(CHEETAH_BITCODE_ABI_COMPILE_FLAGS ${CHEETAH_COMPILE_FLAGS} -emit-llvm)
 set(CHEETAH_BITCODE_ABI_COMPILE_DEFS ${CHEETAH_COMPILE_DEFS}
   "CHEETAH_API_CONSUMER=1"
   "CHEETAH_INTERNAL="

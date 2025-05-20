@@ -572,12 +572,7 @@ void __cilkrts_exception_handler(__cilkrts_worker *w, char *exn) {
         if (NULL != exn) {
             // The spawned child is throwing an exception.  Save that exception
             // object for later processing.
-            struct closure_exception *exn_r =
-                (struct closure_exception *)internal_reducer_lookup(
-                    w, static_cast<void *>(&exception_reducer),
-                    sizeof(exception_reducer),
-                    reinterpret_cast<void *>(init_exception_reducer),
-                    reinterpret_cast<void *>(reduce_exception_reducer));
+            struct closure_exception *exn_r = get_exception_reducer(w);
             exn_r->exn = exn;
             t->exception_pending = true;
         }

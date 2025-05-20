@@ -55,10 +55,10 @@ extern CHEETAH_INTERNAL unsigned int debug_level;
 // Unused: compiler inlines the stack frame creation
 // #define CILK_STACKFRAME_MAGIC 0xCAFEBABE
 
-CHEETAH_INTERNAL void set_alert_level_from_str(const char *const) noexcept;
-CHEETAH_INTERNAL void set_alert_level(unsigned int) noexcept;
-CHEETAH_INTERNAL void set_debug_level(unsigned int) noexcept;
-CHEETAH_INTERNAL void flush_alert_log(void) noexcept;
+CHEETAH_INTERNAL void set_alert_level_from_str(const char *const);
+CHEETAH_INTERNAL void set_alert_level(unsigned int);
+CHEETAH_INTERNAL void set_debug_level(unsigned int);
+CHEETAH_INTERNAL void flush_alert_log(void);
 
 __attribute__((__format__(__printf__, 1, 2))) CHEETAH_INTERNAL_NORETURN void
 cilkrts_bug(const char *fmt, ...);
