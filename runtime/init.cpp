@@ -383,7 +383,8 @@ global_state *__cilkrts_startup(int argc, char *argv[]) {
 }
 
 // Global constructor for starting up the default cilkrts.
-__attribute__((constructor)) void __default_cilkrts_startup() {
+__attribute__((constructor))
+static void __default_cilkrts_startup() {
     default_cilkrts = __cilkrts_startup(0, nullptr);
 
     for (unsigned i = 0; i < cilkrts_callbacks.last_init; ++i)
@@ -803,6 +804,7 @@ CHEETAH_INTERNAL void __cilkrts_shutdown(global_state *g) {
 }
 
 // Global destructor for shutting down the default cilkrts
-__attribute__((destructor)) void __default_cilkrts_shutdown() {
+__attribute__((destructor))
+static void __default_cilkrts_shutdown() {
     __cilkrts_shutdown(default_cilkrts);
 }
