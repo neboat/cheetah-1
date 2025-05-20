@@ -45,6 +45,7 @@ struct hyper_table {
     void rebuild(int32_t size);
 };
 
+CHEETAH_API
 hyper_table *__cilkrts_local_hyper_table_alloc(void);
 CHEETAH_INTERNAL
 void local_hyper_table_free(hyper_table *table);
@@ -210,6 +211,7 @@ static inline struct bucket *find_hyperobject_linear(hyper_table *table,
     return nullptr;
 }
 
+CHEETAH_API
 struct bucket *__cilkrts_find_hyperobject_hash(hyper_table *table,
                                                uintptr_t key);
 
@@ -222,6 +224,7 @@ static inline struct bucket *find_hyperobject(hyper_table *table,
     }
 }
 
+CHEETAH_API
 void *__cilkrts_insert_new_view(hyper_table *table, uintptr_t key, size_t size,
                                 __cilk_identity_fn identity,
                                 __cilk_reduce_fn reduce);
