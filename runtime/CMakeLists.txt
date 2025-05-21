@@ -18,6 +18,7 @@ set(CHEETAH_SOURCES
   personality.cpp
   sched_stats.cpp
   scheduler.cpp
+  worker_sleep.cpp
 )
 
 set(CHEETAH_ABI_SOURCE

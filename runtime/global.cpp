@@ -407,16 +407,3 @@ void global_state::reengage_worker(unsigned int nworkers, worker_id self) {
     // Release the lock on the index structure
     cilk_mutex_unlock(&index_lock);
 }
-
-
-// These functions return the old value
-
-uint64_t global_state::add_to_sentinels(int32_t val) {
-    // val is sign extended to 64 bits
-    return disengaged_sentinel.fetch_add(val, std::memory_order_release);
-}
-
-uint64_t global_state::add_to_disengaged(int32_t val) {
-    return disengaged_sentinel.fetch_add(DISENGAGED_SENTINEL(val, 0),
-                                         std::memory_order_acquire);
-}

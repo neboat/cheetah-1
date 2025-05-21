@@ -29,7 +29,6 @@
 #include "scheduler.h"
 #include "worker.h"
 #include "worker_coord.h"
-#include "worker_sleep.h"
 
 // ==============================================
 // Global and thread-local variables.
@@ -1402,20 +1401,13 @@ static inline void boss_scheduler(__cilkrts_worker *w) {
     CILK_START_TIMING(w, INTERVAL_SCHED);
     w->l->change_state(WORKER_SCHED);
 
-    history_t history = {
-        .inefficient_history = 0,
-        .efficient_history = 0,
-        .sentinel_count_history_tail = 0,
-        .recent_sentinel_count = SENTINEL_COUNT_HISTORY,
-        .fails = init_fails(w->l->wake_val, rts),
-        .sample_threshold = SENTINEL_THRESHOLD,
-        .sentinel_count_history = { 1 },
-    };
+    history_t history;
+    history.fails = rts->init_fails(w->l->wake_val),
 
     worker_scheduler(w, &history);
 
 #if ENABLE_THIEF_SLEEP
-    reset_fails(rts, history.fails);
+    rts->reset_fails(history.fails);
 #endif
     CILK_STOP_TIMING(w, INTERVAL_SCHED);
     w->l->change_state(WORKER_IDLE);
@@ -1426,15 +1418,8 @@ static inline void non_boss_scheduler(__cilkrts_worker *w) {
     CILK_START_TIMING(w, INTERVAL_SCHED);
     w->l->change_state(WORKER_SCHED);
     global_state *const rts = w->g;
-    history_t history = {
-        .inefficient_history = 0,
-        .efficient_history = 0,
-        .sentinel_count_history_tail = 0,
-        .recent_sentinel_count = SENTINEL_COUNT_HISTORY,
-        .fails = init_fails(w->l->wake_val, rts),
-        .sample_threshold = SENTINEL_THRESHOLD,
-        .sentinel_count_history = { 1 },
-    };
+    history_t history;
+    history.fails = rts->init_fails(w->l->wake_val);
 
     while (!rts->terminate) {
         worker_scheduler(w, &history);
@@ -1453,7 +1438,7 @@ static inline void non_boss_scheduler(__cilkrts_worker *w) {
     }
 
 #if ENABLE_THIEF_SLEEP
-    reset_fails(rts, history.fails);
+    rts->reset_fails(history.fails);
 #endif
 
     CILK_STOP_TIMING(w, INTERVAL_SCHED);
@@ -1569,8 +1554,8 @@ void worker_scheduler(__cilkrts_worker *w, history_t *const history) {
             }
 #endif
 
-            fails = go_to_sleep_maybe(
-                rts, self, nworkers, NAP_THRESHOLD, w, t, fails,
+            fails = rts->go_to_sleep_maybe(
+                self, nworkers, NAP_THRESHOLD, w, t, fails,
                 &sample_threshold, &inefficient_history, &efficient_history,
                 history->sentinel_count_history, &sentinel_count_history_tail,
                 &recent_sentinel_count);
@@ -1631,17 +1616,17 @@ void worker_scheduler(__cilkrts_worker *w, history_t *const history) {
             // attempts.  Therefore, avoid measuring the elapsed cycles if we
             // haven't failed many steal attempts.
             if (fails > MIN_FAILS) {
-                start = gettime_fast();
+                start = rts->gettime_fast();
             }
 #endif // ENABLE_THIEF_SLEEP
             do_what_it_says(deques, w, self, t);
 #if ENABLE_THIEF_SLEEP
             if (fails > MIN_FAILS) {
-                end = gettime_fast();
+                end = rts->gettime_fast();
                 uint64_t elapsed = end - start;
                 // Decrement the count of failed steal attempts based on the
                 // amount of work done.
-                fails = decrease_fails_by_work(rts, fails, elapsed,
+                fails = rts->decrease_fails_by_work(fails, elapsed,
                                                &sample_threshold);
                 if (fails < SENTINEL_THRESHOLD) {
                     inefficient_history = 0;

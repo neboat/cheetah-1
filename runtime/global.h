@@ -7,6 +7,7 @@
 #include <atomic>
 
 #include "debug.h"
+#include "efficiency.h"
 #include "fiber.h"
 #include "internal-malloc-impl.h"
 #include "jmpbuf.h"
@@ -57,7 +58,7 @@ struct scheduler_event {
     worker_id worker;
 };
 
-struct global_state {
+struct CHEETAH_INTERNAL global_state {
     /* globally-visible options (read-only after init) */
     struct rts_options options;
 
@@ -143,9 +144,59 @@ struct global_state {
     CHEETAH_INTERNAL
     void swap_worker_with_target(worker_id self, worker_id target_index);
 
-    CHEETAH_INTERNAL uint64_t add_to_disengaged(int32_t val);
-    CHEETAH_INTERNAL uint64_t add_to_sentinels(int32_t val);
+    // These functions return the old value
+    uint64_t add_to_disengaged(int32_t val) {
+        return disengaged_sentinel.fetch_add(DISENGAGED_SENTINEL(val, 0),
+                                             std::memory_order_acquire);
+    }
+    uint64_t add_to_sentinels(int32_t val) {
+        // val is sign extended to 64 bits
+        return disengaged_sentinel.fetch_add(val, std::memory_order_release);
+    }
+
     CHEETAH_INTERNAL void record_event(scheduler_event::event, int, worker_id);
+
+    CHEETAH_INTERNAL static uint64_t gettime_fast(void);
+
+#if ENABLE_THIEF_SLEEP
+    bool try_to_disengage_thief(worker_id self, uint64_t disengaged_sentinel);
+    bool maybe_disengage_thief(worker_id self, unsigned int nworkers);
+    unsigned int decrease_fails_by_work(unsigned int fails, uint64_t elapsed,
+                                        unsigned int *const sample_threshold);
+    void reset_fails(unsigned int fails);
+#endif
+    unsigned int maybe_reengage_workers(worker_id self,
+                       unsigned int nworkers, __cilkrts_worker *const w,
+                       unsigned int fails,
+                       unsigned int *const sample_threshold,
+                       history_sample_t *const inefficient_history,
+                       history_sample_t *const efficient_history,
+                       unsigned int *const sentinel_count_history,
+                       unsigned int *const sentinel_count_history_tail,
+                       unsigned int *const recent_sentinel_count);
+    unsigned int go_to_sleep_maybe(worker_id self,
+                                   unsigned int nworkers,
+                                   const unsigned int NAP_THRESHOLD,
+                                   __cilkrts_worker *const w,
+                                   Closure *const t, unsigned int fails,
+                                   unsigned int *const sample_threshold,
+                                   history_sample_t *const inefficient_history,
+                                   history_sample_t *const efficient_history,
+                                   unsigned int *const sentinel_count_history,
+                                   unsigned int *const sentinel_count_history_tail,
+                                   unsigned int *const recent_sentinel_count);
+    unsigned int handle_failed_steal_attempts(worker_id self,
+                             unsigned int nworkers, const unsigned int NAP_THRESHOLD,
+                             __cilkrts_worker *const w,
+                             unsigned int fails,
+                             unsigned int *const sample_threshold,
+                             history_sample_t *const inefficient_history,
+                             history_sample_t *const efficient_history,
+                             unsigned int *const sentinel_count_history,
+                             unsigned int *const sentinel_count_history_tail,
+                             unsigned int *const recent_sentinel_count);
+
+    unsigned int init_fails(uint32_t wake_val);
 };
 
 CHEETAH_INTERNAL extern global_state *default_cilkrts;
