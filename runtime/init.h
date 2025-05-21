@@ -4,7 +4,7 @@
 #include "cilk-internal.h"
 
 // For invoke, the global state is implied.
-// Exceptions never except invoke but may escape exit.
+// Exceptions never escape invoke but may escape exit.
 CHEETAH_API
 void __cilkrts_internal_invoke_cilkified_root(__cilkrts_stack_frame *sf)
   __CILKRTS_NOTHROW;
