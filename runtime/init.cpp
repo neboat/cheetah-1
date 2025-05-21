@@ -770,7 +770,8 @@ static void workers_deinit(global_state *g) {
     /* TODO: Export initial reducer map */
 }
 
-CHEETAH_INTERNAL void __cilkrts_shutdown(global_state *g) {
+CHEETAH_INTERNAL CHEETAH_COLD
+void __cilkrts_shutdown(global_state *g) {
     CILK_ASSERT(exception_reducer_is_empty());
     // If the workers are still running, stop them now.
     if (g->workers_started)

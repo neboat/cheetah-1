@@ -60,9 +60,10 @@ CHEETAH_INTERNAL void set_alert_level(unsigned int);
 CHEETAH_INTERNAL void set_debug_level(unsigned int);
 CHEETAH_INTERNAL void flush_alert_log(void);
 
-__attribute__((__format__(__printf__, 1, 2))) CHEETAH_INTERNAL_NORETURN void
-cilkrts_bug(const char *fmt, ...);
-CHEETAH_INTERNAL_NORETURN
+__attribute__((__format__(__printf__, 1, 2)))
+CHEETAH_INTERNAL_NORETURN CHEETAH_COLD
+void cilkrts_bug(const char *fmt, ...);
+CHEETAH_INTERNAL_NORETURN CHEETAH_COLD
 void cilk_die_internal(struct global_state *const g, const char *fmt, ...);
 
 #if ALERT_LVL != 0

@@ -142,6 +142,7 @@ static void parse_rts_environment(global_state *g) {
     }
 }
 
+CHEETAH_COLD
 global_state *global_state_init(int argc, char *argv[]) {
     cilkrts_alert(BOOT, "(global_state_init) Initializing global state");
 

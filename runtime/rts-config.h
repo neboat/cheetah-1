@@ -21,6 +21,8 @@
 #define CHEETAH_INTERNAL_NOEXCEPT __attribute((visibility("hidden,nothrow")))
 #endif
 
+#define CHEETAH_COLD [[gnu::cold]]
+
 #ifndef __CILKRTS_VERSION
 #define __CILKRTS_VERSION 0x0
 #endif
