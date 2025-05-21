@@ -140,8 +140,8 @@ sync_in_personality(__cilkrts_worker *w, __cilkrts_stack_frame *sf,
         struct closure_exception *exn_r = get_exception_reducer(w);
         exn_r->exn = (char *)ue_header;
 
-        deque_lock_self(deques, self);
-        Closure *t = deque_peek_bottom(deques, self, self);
+        ReadyDeque::lock_self(deques, self);
+        Closure *t = ReadyDeque::peek_bottom(deques, self, self);
         t->lock(self);
 
         // ensure that we return here after a cilk_sync.
@@ -149,7 +149,7 @@ sync_in_personality(__cilkrts_worker *w, __cilkrts_stack_frame *sf,
         t->orig_rsp = (char *)SP(sf);
 
         t->unlock(self);
-        deque_unlock_self(deques, self);
+        ReadyDeque::unlock_self(deques, self);
 
         // save the current fiber for further stack unwinding.
         if (exn_r->throwing_fiber == nullptr) {

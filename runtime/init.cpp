@@ -593,11 +593,11 @@ void __cilkrts_internal_exit_cilkified_root(global_state *g,
     // Cilkified region to start with an empty deque.  We go ahead and grab the
     // deque lock to make sure no other worker has a lingering pointer to the
     // closure.
-    deque_lock_self(deques, self);
+    ReadyDeque::lock_self(deques, self);
     deques[self].bottom = nullptr;
     deques[self].top = nullptr;
     WHEN_CILK_DEBUG(g->root_closure->owner_ready_deque = NO_WORKER);
-    deque_unlock_self(deques, self);
+    ReadyDeque::unlock_self(deques, self);
 
     // Clear the flags in sf.  This routine runs before leave_frame in a Cilk
     // function, but leave_frame is executed conditionally in Cilk functions
