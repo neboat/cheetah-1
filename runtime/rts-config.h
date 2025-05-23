@@ -1,22 +1,28 @@
 #ifndef _CONFIG_H
 #define _CONFIG_H
 
+#ifdef CHEETAH_API_CONSUMER
+
+#define CHEETAH_API extern "C"
+#define CHEETAH_INTERNAL /* empty */
+#define CHEETAH_INTERNAL_NORETURN __attribute__((noreturn, nothrow))
+
+#else
+
 /* Functions defined in the library and visible outside the library.
    On ELF systems the definitions can be marked protected.  */
-#if defined __ELF__ && !defined CHEETAH_API_CONSUMER
+#ifdef __ELF__
 #define CHEETAH_API extern "C" __attribute((visibility("protected")))
 #else
 #define CHEETAH_API extern "C"
 #endif
 
 /* Functions defined in the library and not visible outside the library. */
-#ifndef CHEETAH_INTERNAL
 #define CHEETAH_INTERNAL __attribute((visibility("hidden")))
-#endif
-#ifndef CHEETAH_INTERNAL_NORETURN
 #define CHEETAH_INTERNAL_NORETURN \
   __attribute((noreturn, nothrow, visibility("hidden")))
-#endif
+
+#endif /* CHEETAH_API_CONSUMER */
 
 #define CHEETAH_COLD [[gnu::cold]]
 
