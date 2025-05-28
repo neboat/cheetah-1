@@ -92,11 +92,11 @@ static SanitizerFinishSwitchFiberFuncPtr sanitizer_finish_switch_fiber_fn = null
 static AsanPoisonMemoryRegionFuncPtr asan_poison_memory_region_fn = nullptr;
 static AsanUnpoisonMemoryRegionFuncPtr asan_unpoison_memory_region_fn = nullptr;
 
-__thread void *fake_stack_save = nullptr;
-const __thread void *old_thread_stack = nullptr;
-__thread size_t old_thread_stacksize = 0;
-__thread struct cilk_fiber *current_fiber = nullptr;
-__thread bool on_fiber = false;
+static __thread void *fake_stack_save = nullptr;
+static const __thread void *old_thread_stack = nullptr;
+static __thread size_t old_thread_stacksize = 0;
+static __thread struct cilk_fiber *current_fiber = nullptr;
+static __thread bool on_fiber = false;
 
 static SanitizerStartSwitchFiberFuncPtr getStartSwitchFiberFunc() {
     SanitizerStartSwitchFiberFuncPtr fn = nullptr;

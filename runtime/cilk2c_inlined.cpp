@@ -112,7 +112,7 @@ __cilkrts_enter_frame(__cilkrts_stack_frame *sf) noexcept {
 
     sf->magic = frame_magic;
 
-    struct cilk_fiber *fh = __cilkrts_current_fh;
+    struct cilk_fiber *fh = __cilkrts_tls.fh;
     sf->fh = fh;
     sf->call_parent = fh->current_stack_frame;
     fh->current_stack_frame = sf;
