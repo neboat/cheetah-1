@@ -53,7 +53,7 @@ unsigned __cilkrts_get_worker_number(void) {
 void *__cilkrts_reducer_lookup(void *key, size_t size,
                                void *identity_ptr, void *reduce_ptr) {
     // If we're outside a cilkified region, then the key is the view.
-    if (__cilkrts_need_to_cilkify)
+    if (__cilkrts_status.need_to_cilkify)
         return key;
     struct hyper_table *table = get_hyper_table();
     struct bucket *b = find_hyperobject(table, (uintptr_t)key);
@@ -105,7 +105,7 @@ uncilkify(global_state *g, __cilkrts_stack_frame *sf) {
 __attribute__((always_inline)) void
 __cilkrts_enter_frame(__cilkrts_stack_frame *sf) noexcept {
     sf->flags = 0;
-    if (__cilkrts_need_to_cilkify) {
+    if (__cilkrts_status.need_to_cilkify) {
         cilkify(sf);
     }
     cilkrts_alert(CFRAME, "__cilkrts_enter_frame %p", (void *)sf);
@@ -311,7 +311,7 @@ __cilk_helper_epilogue(__cilkrts_stack_frame *sf, __cilkrts_stack_frame *parent,
 
 __attribute__((always_inline))
 void __cilkrts_enter_landingpad(__cilkrts_stack_frame *sf, int32_t sel) {
-    if (__cilkrts_need_to_cilkify)
+    if (__cilkrts_status.need_to_cilkify)
         return;
 
     sf->fh->current_stack_frame = sf;

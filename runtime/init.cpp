@@ -445,7 +445,7 @@ static inline __attribute__((noinline)) void boss_wait_helper(void) {
     // Wait until the cilkified region is done executing.
     g->wait_while_cilkified();
 
-    __cilkrts_need_to_cilkify = true;
+    __cilkrts_status.need_to_cilkify = true;
 
     // At this point, some Cilk worker must have completed the
     // Cilkified region and executed uncilkify at the end of the Cilk
@@ -482,7 +482,7 @@ void __cilkrts_internal_invoke_cilkified_root(__cilkrts_stack_frame *sf)
         boss_initialized = true;
     }
 
-    __cilkrts_need_to_cilkify = false;
+    __cilkrts_status.need_to_cilkify = false;
 
     // The boss thread will impersonate the last exiting worker until it tries
     // to become a thief.
@@ -613,7 +613,7 @@ void __cilkrts_internal_exit_cilkified_root(global_state *g,
         local_state *l = w->l;
         g->cilkified.store(false, std::memory_order_relaxed);
         l->state = WORKER_IDLE;
-        __cilkrts_need_to_cilkify = true;
+        __cilkrts_status.need_to_cilkify = true;
 
         // Restore the boss's original rsp, so the boss completes the Cilk
         // function on its original stack.
