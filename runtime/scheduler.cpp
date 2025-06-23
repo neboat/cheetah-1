@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <new> // placement new on macOS
 #ifdef __linux__
 #include <sched.h>
 #endif
