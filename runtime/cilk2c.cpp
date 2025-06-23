@@ -1,16 +1,11 @@
-#include <atomic>
-
-#include <unwind.h>
-
 #include "debug.h"
-
 #include "cilk-internal.h"
 #include "cilk2c.h"
 #include "fiber.h"
 #include "global.h"
-#include "readydeque.h"
 #include "rts-config.h"
 #include "scheduler.h"
+#include <unwind.h>
 
 extern __attribute__((noreturn))
 void _Unwind_Resume(struct _Unwind_Exception *);

@@ -1,7 +1,6 @@
-#include <inttypes.h>
-#include <stdio.h>
+#include <cinttypes>
+#include <cstdio>
 #include <time.h>
-
 #include "cilk-internal.h"
 #include "debug.h"
 #include "global.h"

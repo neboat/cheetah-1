@@ -1,5 +1,8 @@
 #ifndef _EFFICIENCY_H
 #define _EFFICIENCY_H
+
+#include <cstdint>
+
 // Information for histories of efficient and inefficient worker-count samples
 // and for sentinel counts.
 typedef uint32_t history_sample_t;

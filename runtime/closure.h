@@ -1,12 +1,9 @@
 #ifndef _CLOSURE_TYPE_H
 #define _CLOSURE_TYPE_H
 
-#include <atomic>
-
 #include "cilk-internal.h"
-#include "fiber.h"
 #include "local-hypertable.h"
-#include "mutex.h"
+#include <atomic>
 
 // Forward declaration
 typedef struct Closure Closure;

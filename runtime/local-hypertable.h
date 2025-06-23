@@ -1,10 +1,10 @@
 #ifndef _LOCAL_HYPERTABLE_H
 #define _LOCAL_HYPERTABLE_H
 
-#include <stdint.h>
-
 #include "hyperobject_base.h"
 #include "rts-config.h"
+#include <cstdint>
+#include <cstdlib>
 
 typedef uint32_t index_t;
 

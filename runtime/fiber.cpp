@@ -2,9 +2,10 @@
 #define _GNU_SOURCE // For RTLD_DEFAULT from dlfcn.h
 #endif
 
+#include <cstdio>
+#include <cstdlib>
+#include <cstring> /* memset() */
 #include <dlfcn.h> // For dynamically loading ASan functions
-#include <stdio.h>
-#include <stdlib.h>
 #include <sys/mman.h>
 #ifdef __BSD__
 #include <sys/cpuset.h>
@@ -13,11 +14,9 @@
 
 #include "cilk-internal.h"
 #include "debug.h"
-#include "fiber.h"
 #include "fiber-header.h"
-#include "init.h"
+#include "fiber.h"
 
-#include <string.h> /* memset() */
 
 /* Set up flags for mmap to allocate a stack region.
 

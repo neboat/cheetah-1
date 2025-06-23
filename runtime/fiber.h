@@ -9,8 +9,6 @@
 #include "rts-config.h"
 #include "worker.h"
 
-#include <stdint.h>
-
 //===============================================================
 // Struct defs used by fibers, fiber pools
 //===============================================================
@@ -129,9 +127,7 @@ void cilk_fiber_deallocate_to_pool(__cilkrts_worker *w,
                                    struct cilk_fiber *fiber);
 
 #if CILK_ENABLE_ASAN_HOOKS
-CHEETAH_INTERNAL
 void sanitizer_start_switch_fiber(struct cilk_fiber *fiber) __CILKRTS_NOTHROW;
-CHEETAH_INTERNAL
 void sanitizer_finish_switch_fiber(void) __CILKRTS_NOTHROW;
 CHEETAH_INTERNAL void sanitizer_poison_fiber(struct cilk_fiber *fiber);
 CHEETAH_INTERNAL void sanitizer_unpoison_fiber(struct cilk_fiber *fiber);

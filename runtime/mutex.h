@@ -5,11 +5,10 @@
 typedef union cilk_mutex cilk_mutex;
 
 // Includes
-#include <errno.h>
+#include <cerrno>
 #include <pthread.h>
-#include <stdio.h>
-#include <stdlib.h>
-
+#include <cstdio>
+#include <cstdlib>
 #include "rts-config.h"
 
 #ifndef __APPLE__

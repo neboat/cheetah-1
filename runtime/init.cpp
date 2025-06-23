@@ -1,12 +1,12 @@
+#include <cstdint>
 #include <sched.h>
-#include <stdint.h>
 
 #include <pthread.h>
 #ifdef DEBUG
-#include <stdio.h>
+#include <cstdio>
 #endif
-#include <stdlib.h>
-#include <string.h> /* strerror */
+#include <cstdlib>
+#include <cstring> /* strerror */
 #ifdef __linux__
 #include <sys/sysinfo.h>
 #endif
@@ -24,7 +24,6 @@
 #include "readydeque.h"
 #include "sched_stats.h"
 #include "scheduler.h"
-#include "worker_coord.h"
 
 #if defined __FreeBSD__ && __FreeBSD__ < 13
 typedef cpuset_t cpu_set_t;
@@ -44,6 +43,8 @@ static local_state *worker_local_init(local_state *l, global_state *g) {
     l->returning = false;
     l->rand_next = 0; /* will be reset in scheduler loop */
     l->wake_val = 0;
+    l->lht = nullptr;
+    l->rht = nullptr;
     cilk_sched_stats_init(&(l->stats));
 
     return l;

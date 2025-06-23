@@ -1,11 +1,8 @@
-#include <assert.h>
-#include <stdint.h>
-#include <stdlib.h>
-
-#include "cilk-internal.h"
-#include "debug.h"
 #include "internal-malloc.h" /* only needed for new view allocation */
 #include "local-hypertable.h"
+#include <cassert>
+#include <cstdint>
+#include <cstdlib>
 
 static void reducer_base_init(reducer_base *rb) {
     rb->view = nullptr;

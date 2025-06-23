@@ -2,7 +2,6 @@
 
 #include <atomic>
 #include <cstdint>
-#include <new>
 #ifdef __linux__
 #include <sched.h>
 #endif
@@ -17,6 +16,7 @@
 
 #include "cilk-internal.h"
 #include "cilk2c.h"
+#include "cilk2c_inlined.h"
 #include "closure.h"
 #include "fiber-header.h"
 #include "fiber.h"
@@ -361,6 +361,7 @@ static Closure *Closure_return(__cilkrts_worker *const w, worker_id self,
 
     Closure *res = nullptr;
     Closure *const parent = child->spawn_parent;
+    local_state *l = w->l;
 
     CILK_ASSERT(child);
     CILK_ASSERT(child->join_counter == 0);
@@ -391,9 +392,6 @@ static Closure *Closure_return(__cilkrts_worker *const w, worker_id self,
     child->lock(self);
 
     // Deal with reducers.
-    // Get the current active hypermap.
-    hyper_table *active_ht = w->hyper_table;
-    w->hyper_table = nullptr;
     while (true) {
         // invariant: a closure cannot unlink itself w/out lock on parent
         // so what this points to cannot change while we have lock on parent
@@ -416,25 +414,43 @@ static Closure *Closure_return(__cilkrts_worker *const w, worker_id self,
         // If we have no hypermaps on either the left or right, deposit the
         // active hypermap and break from the loop.
         if (lht == nullptr && rht == nullptr) {
-            /* deposit views */
+            // Deposit the current active hypermap
+            hyper_table *active_ht = w->hyper_table;
+            w->hyper_table = nullptr;
             *lht_ptr = active_ht;
             break;
         }
 
+        child->set_status(CLOSURE_RUNNING);
+
         child->unlock(self);
         parent->unlock(self);
 
-        // merge reducers
-        if (lht) {
-            active_ht = merge_two_hts(lht, active_ht);
-        }
-        if (rht) {
-            active_ht = merge_two_hts(active_ht, rht);
-        }
+        // Store hyper tables to merge reducers in user code on the child
+        // closure
+        l->rht = rht;
+        l->lht = lht;
 
-        parent->lock(self);
-        child->lock(self);
+        setup_for_execution(w, child);
+        l->provably_good_steal = true;  // Use the existing SP in the frame
+
+        return child;
+
+        // // merge reducers
+        // if (lht) {
+        //     active_ht = merge_two_hts(lht, active_ht);
+        // }
+        // if (rht) {
+        //     active_ht = merge_two_hts(active_ht, rht);
+        // }
+
+        // parent->lock(self);
+        // child->lock(self);
     }
+
+    // Cilk_exception_handler ended up pushing a stack frame onto child, to do
+    // reductions.  Because there are no reductions to do, pop that frame.
+    __cilkrts_leave_frame(child->frame);
 
     /* The returning closure and its parent are locked. */
 
@@ -497,7 +513,10 @@ static Closure *Closure_return(__cilkrts_worker *const w, worker_id self,
         hyper_table *active_ht = parent->user_ht;
         parent->child_ht = nullptr;
         parent->user_ht = nullptr;
-        w->hyper_table = merge_two_hts(child_ht, active_ht);
+        // w->hyper_table = merge_two_hts(child_ht, active_ht);
+        CILK_ASSERT_NULL(l->lht);
+        l->lht = child_ht;
+        w->hyper_table = active_ht;
 
         setup_for_execution(w, res);
     }
@@ -535,6 +554,71 @@ static Closure *return_value(__cilkrts_worker *const w, worker_id self,
     cilkrts_alert(RETURN, "(return_value) returning closure %p", (void *)t);
 
     return res;
+}
+
+static hyper_table *Cilk_merge_hts(__cilkrts_worker *w) {
+    local_state *l = w->l;
+    hyper_table *lht = l->lht;
+    hyper_table *rht = l->rht;
+
+    if (lht == NULL && rht == NULL)
+        return NULL;
+
+    l->lht = NULL;
+    l->rht = NULL;
+
+    hyper_table *active_ht = w->hyper_table;
+    w->hyper_table = NULL;
+
+    // merge reducers
+    if (lht) {
+        active_ht = merge_two_hts(lht, active_ht);
+    }
+    if (rht) {
+        active_ht = merge_two_hts(active_ht, rht);
+    }
+    // Assume that merge_two_hts doesn't itself use reducers.
+    // TODO: Relax this assumption.
+    return active_ht;
+}
+
+void __cilkrts_do_reductions(__cilkrts_stack_frame *sf) {
+    __cilkrts_worker *w = get_worker_from_stack(sf);
+    hyper_table *ht = Cilk_merge_hts(w);
+    if (ht != NULL) {
+        // The worker might have changed if the reduce operations executed
+        // parallel code.  Reload the worker pointer.
+        w = get_worker_from_stack(sf);
+        w->hyper_table = ht;
+    }
+}
+
+static void Cilk_do_reductions_for_return(__cilkrts_worker *w,
+                                          ReadyDeque *deques, Closure *t) {
+    __cilkrts_stack_frame sf;
+    __cilkrts_enter_frame(&sf);
+
+    t->frame = &sf;
+    while (true) {
+        sysdep_save_fp_ctrl_state(&sf);
+        if (!__builtin_setjmp(sf.ctx)) {
+            // Jump to the runtime to attempt to return this closure.
+            w->l->returning = true;
+            longjmp_to_runtime(w);
+        }
+
+        sanitizer_finish_switch_fiber();
+
+        // If control reaches this point, then there are reductions to do.
+        // Perform those reductions, and then try again to return this closure.
+        __cilkrts_do_reductions(&sf);
+
+        // Restore the closure and deque state to prepare to return the closure.
+        w = get_worker_from_stack(&sf);
+        ReadyDeque::lock_self(deques, w->self);
+        CILK_ASSERT(!t->has_children());
+        t->set_status(CLOSURE_RETURNING);
+    }
 }
 
 /*
@@ -583,11 +667,12 @@ void __cilkrts_exception_handler(__cilkrts_worker *w, char *exn) {
             CILK_ASSERT(!t->has_children());
             t->set_status(CLOSURE_RETURNING);
         }
-        w->l->returning = true;
+        // w->l->returning = true;
 
         t->unlock(self);
 
-        longjmp_to_runtime(w); // NOT returning back to user code
+        // longjmp_to_runtime(w); // NOT returning back to user code
+        Cilk_do_reductions_for_return(w, deques, t);
 
     } else { // not steal, not abort; false alarm
         t->unlock(self);
@@ -1274,8 +1359,9 @@ int Cilk_sync(__cilkrts_worker *const w, __cilkrts_stack_frame *frame) {
     if (res == SYNC_READY) {
         hyper_table *child_ht = t->child_ht;
         if (child_ht) {
+            CILK_ASSERT_NULL(w->l->lht);
+            w->l->lht = child_ht;
             t->child_ht = nullptr;
-            w->hyper_table = merge_two_hts(child_ht, w->hyper_table);
         }
 
 #if CILK_ENABLE_ASAN_HOOKS

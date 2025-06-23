@@ -1,9 +1,8 @@
 #include "cilk-internal.h"
-#include "global.h"
+#include "cilk2c_inlined.h"
 #include "hyperobject_base.h"
 #include "local-hypertable.h"
 #include "local-reducer-api.h"
-#include "cilk2c_inlined.h"
 #include "rts-config.h"
 
 #pragma clang diagnostic push

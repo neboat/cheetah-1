@@ -1,9 +1,8 @@
 #ifndef _DEBUG_H
 #define _DEBUG_H
 
-#include <stdarg.h>
-
 #include "rts-config.h"
+#include <cstdarg>
 
 // forward declaration for using struct global_stat
 struct global_state;

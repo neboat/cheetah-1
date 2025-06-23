@@ -1,11 +1,6 @@
 #ifndef _CILK_GLOBAL_H
 #define _CILK_GLOBAL_H
 
-#include <pthread.h>
-#include <stdint.h>
-
-#include <atomic>
-
 #include "debug.h"
 #include "efficiency.h"
 #include "fiber.h"
@@ -15,6 +10,9 @@
 #include "rts-config.h"
 #include "sched_stats.h"
 #include "worker.h"
+#include <atomic>
+#include <cstdint>
+#include <pthread.h>
 
 extern unsigned __cilkrts_nproc;
 

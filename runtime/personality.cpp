@@ -1,13 +1,6 @@
-#include <atomic>
-#include <stdint.h>
-#include <string.h>
-#include <unwind.h>
-
-#include <cilk/cilk_api.h>
-
 #include "cilk-internal.h"
-#include "cilk2c_inlined.h"
 #include "cilk2c.h"
+#include "cilk2c_inlined.h"
 #include "closure.h"
 #include "debug.h"
 #include "fiber.h"
@@ -15,6 +8,10 @@
 #include "init.h"
 #include "local-reducer-api.h"
 #include "readydeque.h"
+#include <cilk/cilk_api.h>
+#include <cstdint>
+#include <cstring>
+#include <unwind.h>
 
 static struct closure_exception exception_reducer = {
   .exn = nullptr,

@@ -2,6 +2,8 @@
 #define _CILK2C_H
 
 #include "cilk-internal.h"
+#include "frame.h"
+#include "rts-config.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -37,6 +39,7 @@ unsigned __cilkrts_get_nworkers(void) __CILKRTS_NOTHROW;
 
 CHEETAH_API void __cilkrts_set_return(__cilkrts_worker *const ws);
 CHEETAH_API void __cilkrts_exception_handler(__cilkrts_worker *w, char *exn);
+CHEETAH_API void __cilkrts_do_reductions(__cilkrts_stack_frame *sf);
 
 #ifdef __cplusplus
 }

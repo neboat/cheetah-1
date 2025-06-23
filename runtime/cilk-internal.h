@@ -1,10 +1,6 @@
 #ifndef _CILK_INTERNAL_H
 #define _CILK_INTERNAL_H
 
-#include <stdint.h>
-
-#include <cilk/cilk_api.h>
-
 #include "debug.h"
 #include "fiber-header.h"
 #include "frame.h"
@@ -12,6 +8,8 @@
 #include "rts-config.h"
 #include "sched_stats.h"
 #include "worker.h"
+#include <cilk/cilk_api.h>
+#include <cstdint>
 
 #if defined __i386__ || defined __x86_64__
 #ifdef __SSE__

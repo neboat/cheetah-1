@@ -1,10 +1,10 @@
 #ifndef _READYDEQUE_H
 #define _READYDEQUE_H
 
-#include <atomic>
 #include "closure.h"
 #include "rts-config.h"
 #include "worker_coord.h"
+#include <atomic>
 
 // Forward declaration
 struct ReadyDeque;
@@ -12,7 +12,6 @@ struct ReadyDeque;
 // Includes
 #include "cilk-internal.h"
 #include "mutex.h"
-
 #include "debug.h"
 #include "global.h"
 #include "local.h"

@@ -7,15 +7,13 @@
 #ifdef __FreeBSD__
 #include <pthread_np.h>
 #endif
-#include <sched.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h> /* _SC_NPROCESSORS_ONLN */
-
 #include "debug.h"
 #include "global.h"
-#include "init.h"
 #include "readydeque.h"
+#include <cstdio>
+#include <cstring>
+#include <sched.h>
+#include <unistd.h> /* _SC_NPROCESSORS_ONLN */
 
 #if defined __FreeBSD__ && __FreeBSD__ < 13
 typedef cpuset_t cpu_set_t;

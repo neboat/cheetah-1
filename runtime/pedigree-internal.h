@@ -1,10 +1,9 @@
 #ifndef _PEDIGREE_INTERNAL_H
 #define _PEDIGREE_INTERNAL_H
 
-#include <stdlib.h>
-#include <cilk/cilk_api.h>
-
 #include "cilk-internal.h"
+#include <cilk/cilk_api.h>
+#include <cstdlib>
 
 static const uint64_t DPRNG_PRIME = (uint64_t)(-59);
 extern uint64_t *__pedigree_dprng_m_array;

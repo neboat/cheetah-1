@@ -1,14 +1,13 @@
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <strings.h> /* ffs */
-#include <sys/mman.h>
-#include <unistd.h> /* sysconf */
-
 #include "cilk-internal.h"
 #include "debug.h"
 #include "global.h"
 #include "local.h"
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <strings.h> /* ffs */
+#include <sys/mman.h>
+#include <unistd.h> /* sysconf */
 
 CHEETAH_INTERNAL int cheetah_page_shift = 0;
 

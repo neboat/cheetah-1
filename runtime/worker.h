@@ -4,8 +4,6 @@
 #include <atomic>
 #include <cstdint>
 
-#include "rts-config.h"
-
 struct __cilkrts_stack_frame;
 struct local_state;
 struct global_state;
