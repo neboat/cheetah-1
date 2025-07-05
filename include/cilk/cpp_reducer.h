@@ -1,6 +1,8 @@
 #ifndef _CPP_REDUCER_H
 #define _CPP_REDUCER_H
 
+#include <cilk/reducer>
+
 #ifdef __cplusplus
 
 #include <functional>
