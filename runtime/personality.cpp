@@ -7,6 +7,7 @@
 #include "fiber.h"
 #include "frame.h"
 #include "init.h"
+#include "local-hyper-pagetable.h"
 #include "local-reducer-api.h"
 #include <cilk/cilk_api.h>
 #include <cstdint>
@@ -104,7 +105,7 @@ closure_exception *get_exception_reducer_or_null(__cilkrts_worker *w) noexcept {
 
     bucket *b = find_hyperobject(table, (uintptr_t)key);
     if (b) {
-        CILK_ASSERT_POINTER_EQUAL(key, (void *)b->key);
+        CILK_ASSERT_POINTER_EQUAL(key, (void *)getAddrFromKey(b->key));
         // Return the existing view.
         reducer_base *base = std::get<reducer_base *>(b->data.extra);
         return static_cast<closure_exception *>(base);
