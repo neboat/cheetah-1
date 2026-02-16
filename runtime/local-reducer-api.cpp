@@ -21,34 +21,26 @@ reducer_base::reducer_base() {
 
 reducer_base::~reducer_base() {}
 
-static void reducer_register(const bucket &b) __CILKRTS_NOTHROW {
+__attribute__((always_inline))
+static void reducer_register(uintptr_t key, cilk::reducer_data &&data) __CILKRTS_NOTHROW {
     struct hyper_table *table =
         get_local_hyper_table(__cilkrts_get_tls_worker());
-    [[maybe_unused]] bool success = insert_hyperobject(table, b);
+    [[maybe_unused]] bool success = insert_hyperobject(table, key, std::move(data));
     CILK_ASSERT(success && "Failed to register reducer.");
 }
 
 void __cilkrts_reducer_register_0(reducer_base *key) __CILKRTS_NOTHROW {
-    bucket b{.key = (uintptr_t)key, .data = {.view = nullptr, .extra = key}};
-    reducer_register(b);
+    reducer_register((uintptr_t)key, {.view = nullptr, .extra = key});
 }
 
 void __cilkrts_reducer_register_1(void *key,
                                   reducer_callbacks *cb) __CILKRTS_NOTHROW {
-    bucket b{
-        .key = (uintptr_t)key,
-        .data = {.view = key, .extra = &cb->reduce},
-    };
-    reducer_register(b);
+    reducer_register((uintptr_t)key, {.view = key, .extra = &cb->reduce});
 }
 
 void __cilkrts_reducer_register_2(void *key, __cilk_c_reduce_fn *reduce)
     __CILKRTS_NOTHROW {
-    bucket b{
-        .key = (uintptr_t)key,
-        .data = {.view = key, .extra = reduce},
-    };
-    reducer_register(b);
+    reducer_register((uintptr_t)key, {.view = key, .extra = reduce});
 }
 
 void __cilkrts_reducer_unregister(void *key) noexcept {
@@ -63,7 +55,7 @@ void __cilkrts_reducer_unregister(void *key) noexcept {
 
 CHEETAH_INTERNAL
 reducer_base *internal_reducer_lookup(__cilkrts_worker *w,
-                                        reducer_base *key) {
+                                      reducer_base *key) {
     struct hyper_table *table = get_local_hyper_table(w);
     bucket *b = find_hyperobject(table, (uintptr_t)key);
     if (__builtin_expect(!!b, true)) {

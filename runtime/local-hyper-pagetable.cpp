@@ -4,6 +4,11 @@
 #include "internal-malloc.h"
 #include <cassert>
 
+using cilk::reducer_base;
+using cilk::reducer_callbacks;
+using cilk::reducer_data;
+using cilk::reduce_fn;
+
 ///////////////////////////////////////////////////////////////////////////
 // Implementations of methods from PageTableTy.
 
@@ -47,12 +52,12 @@ hyper_table *__cilkrts_local_hyper_table_alloc(void) {
     return Tmp;
 }
 
-__reducer_base *__cilkrts_insert_new_view_0(hyper_table *table,
-                                            __reducer_base *key) {
+reducer_base *__cilkrts_insert_new_view_0(hyper_table *table,
+                                          reducer_base *key) {
     // Create a new view and initialize it with the identity function.
-    size_t size = key->size();
+    size_t size = key->view_size();
     void *new_view = cilk_aligned_alloc(64, round_size_to_alignment(64, size));
-    __reducer_base *base = key->identity(new_view);
+    reducer_base *base = key->identity(new_view);
 
     // Insert the new view into the local hypertable.
     [[maybe_unused]] bool success =
@@ -62,7 +67,7 @@ __reducer_base *__cilkrts_insert_new_view_0(hyper_table *table,
 }
 
 void *__cilkrts_insert_new_view_1(hyper_table *table, uintptr_t key,
-                                  const __reducer_callbacks &callbacks) {
+                                  const reducer_callbacks &callbacks) {
     // Create a new view and initialize it with the identity function.
     void *new_view =
         cilk_aligned_alloc(64, round_size_to_alignment(64, callbacks.size));
@@ -95,22 +100,22 @@ void *__cilkrts_insert_new_view_2(hyper_table *table, uintptr_t key,
 void bucket_reduce(bucket *Left, bucket *Right) {
     assert(Left->data.extra.index() == Right->data.extra.index());
     void *LeftView = Left->data.view, *RightView = Right->data.view;
-    if (std::holds_alternative<__reducer_base *>(Left->data.extra)) {
-        __reducer_base *Leftmost = static_cast<__reducer_base *>(
+    if (std::holds_alternative<reducer_base *>(Left->data.extra)) {
+        reducer_base *Leftmost = static_cast<reducer_base *>(
             reinterpret_cast<void *>(getAddrFromKey(Left->key)));
-        __reducer_base *LeftR = std::get<__reducer_base *>(Left->data.extra);
-        __reducer_base *RightR = std::get<__reducer_base *>(Right->data.extra);
+        reducer_base *LeftR = std::get<reducer_base *>(Left->data.extra);
+        reducer_base *RightR = std::get<reducer_base *>(Right->data.extra);
         Leftmost->reduce(LeftR, RightR);
-        RightR->~__reducer_base();
-    } else if (std::holds_alternative<const __cilk_reduce_fn *>(
+        RightR->~reducer_base();
+    } else if (std::holds_alternative<const reduce_fn *>(
                    Left->data.extra)) {
-        (*std::get<const __cilk_reduce_fn *>(Left->data.extra))(LeftView,
+        (*std::get<const reduce_fn *>(Left->data.extra))(LeftView,
                                                                 RightView);
     } else {
         // fprintf(stderr, "bucket_reduce %p, %p\n", LeftView, RightView);
         std::get<__cilk_c_reduce_fn *>(Left->data.extra)(LeftView, RightView);
     }
-    Right->data.extra = (__reducer_base *)nullptr;
+    Right->data.extra = (reducer_base *)nullptr;
     Right->data.view = nullptr;
     free(RightView);
 }
@@ -119,8 +124,7 @@ void bucket_reduce(bucket *Left, bucket *Right) {
 // deletes the other.
 hyper_table *merge_two_hts(hyper_table *__restrict Left,
                            hyper_table *__restrict Right) {
-    // fprintf(stderr, "merge_two_hts %p (%lld), %p (%lld)\n", Left,
-    // Left->size(),
+    // fprintf(stderr, "merge_two_hts %p (%zu), %p (%zu)\n", Left, Left->size(),
     //         Right, Right->size());
     // In the trivial case of an empty hyper_table, return the other
     // hyper_table.
@@ -157,7 +161,7 @@ hyper_table *merge_two_hts(hyper_table *__restrict Left,
         if (DstB == nullptr) {
             // fprintf(stderr, "merge_two_hts: inserting %lx -> %p into %p\n",
             //         Addr, B.Data.view, Dst);
-            Dst->insert(Addr, B.data);
+            Dst->insert(Addr, std::move(B.data));
         } else {
             if (LeftDst) {
                 // fprintf(stderr, "merge_two_hts: reduction (%d): %p -> %p and
@@ -170,7 +174,7 @@ hyper_table *merge_two_hts(hyper_table *__restrict Left,
                 //         LeftDst, Src, B.Data.view, Dst, DstB->Data.view);
                 bucket_reduce(&B, DstB);
                 DstB->data = B.data;
-                B.data.extra = (__reducer_base *)nullptr;
+                B.data.extra = (reducer_base *)nullptr;
                 B.data.view = nullptr;
             }
         }
