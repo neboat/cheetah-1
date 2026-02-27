@@ -25,7 +25,8 @@ __attribute__((always_inline))
 static void reducer_register(uintptr_t key, cilk::reducer_data &&data) __CILKRTS_NOTHROW {
     struct hyper_table *table =
         get_local_hyper_table(__cilkrts_get_tls_worker());
-    [[maybe_unused]] bool success = insert_hyperobject(table, key, std::move(data));
+    [[maybe_unused]] bool success =
+        insert_hyperobject(table, key, std::forward<reducer_data>(data));
     CILK_ASSERT(success && "Failed to register reducer.");
 }
 
