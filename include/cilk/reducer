@@ -10,17 +10,39 @@ typedef std::function<void(void *)> identity_fn;
 typedef std::function<void(void *, void *)> reduce_fn;
 
 struct reducer_base {
-protected:
-  reducer_base();
 public:
-  virtual ~reducer_base();
-  // All of the following methods may be called concurrently.
-  virtual std::size_t view_size() const = 0;
-  // Return the reducer_base subobject of a newly constructed object.
-  virtual reducer_base *identity(void *view) = 0;
-  // Merge r into l.  The destructor for r will be called after reduce.
-  virtual void reduce(reducer_base *l, reducer_base *r) = 0;
+  virtual ~reducer_base() = default;
+  // std::size_t view_size() const;
+  // reducer_base *identity(void *view);
+  // void reduce(reducer_base *l, reducer_base *r);
+  std::size_t view_size() const { return 0; }
+  reducer_base *identity(void *view) {
+      return static_cast<reducer_base *>(view);
+  }
+  void reduce(reducer_base *l, reducer_base *r) {}
 };
+
+template <class Derived> struct ReducerBase : public reducer_base {
+protected:
+  ReducerBase() = default;
+public:
+  std::size_t view_size() const {
+      return static_cast<const Derived *>(this)->view_size();
+  }
+  reducer_base *identity(void *view) {
+      return static_cast<Derived *>(this)->identity(view);
+  }
+  void reduce(reducer_base *l, reducer_base *r) {
+      static_cast<Derived *>(this)->reduce(static_cast<Derived *>(l),
+                                           static_cast<Derived *>(r));
+  }
+};
+
+typedef ReducerBase<reducer_base> abstract_reducer;
+
+typedef std::size_t (reducer_base::*view_size_fn)() const;
+typedef reducer_base *(reducer_base::*rb_identity_fn)(void *);
+typedef void (reducer_base::*rb_reduce_fn)(reducer_base *, reducer_base *);
 
 struct reducer_callbacks {
   std::size_t size;
@@ -28,10 +50,21 @@ struct reducer_callbacks {
   reduce_fn reduce;
 };
 
-}
+} // namespace cilk
 
 extern "C" cilk::reducer_base *__hyper_lookup_class(const cilk::reducer_base *)
-  __attribute__((nonnull, returns_nonnull));
+    __attribute__((nonnull, returns_nonnull));
+
+extern "C" cilk::reducer_base *
+__hyper_lookup_class_static(const cilk::reducer_base *, cilk::view_size_fn szfn,
+                            cilk::rb_identity_fn ident_fn,
+                            cilk::rb_reduce_fn red_fn)
+    __attribute__((nonnull, returns_nonnull));
+// extern "C" cilk::reducer_base *
+// __hyper_lookup_class_static(const cilk::reducer_base *, size_t size,
+//                             cilk::rb_identity_fn ident_fn,
+//                             cilk::rb_reduce_fn red_fn)
+//     __attribute__((nonnull, returns_nonnull));
 
 extern "C" void *__hyper_lookup_internal_1(void *, const cilk::reducer_callbacks &)
   __attribute__((nonnull, returns_nonnull));

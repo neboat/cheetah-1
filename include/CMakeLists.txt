@@ -5,6 +5,7 @@ set(cilk_header_files
   cilk/holder
   cilk/opadd_reducer
   cilk/ostream_reducer
+  cilk/span_reducer
   cilk/reducer)
 
 set(output_dir ${CHEETAH_OUTPUT_DIR}/include)

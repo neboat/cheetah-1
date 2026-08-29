@@ -1,0 +1,235 @@
+#ifndef _SPAN_REDUCER_
+#define _SPAN_REDUCER_
+
+#include <cassert>
+#include <cilk/reducer>
+#include <new>
+#include <span>
+#include <type_traits>
+
+namespace {
+constexpr size_t next_multiple(size_t val, size_t multiple) {
+    return ((val + multiple - 1) / multiple) * multiple;
+}
+} // namespace
+
+namespace cilk {
+
+template <typename T> using span_element_identity_fn = void (*)(T &);
+template <typename T> using span_element_reduce_fn = void (*)(T &, const T &);
+
+// A span reducer maintains parallel views that are fixed-size contiguous
+// sequences of objects of type T.  These views are initialized and reduced
+// element-wise using the el_id_fn and el_reduce_fn functions specified as
+// template parameters.
+// template <typename T, span_element_identity_fn<T> el_id_fn,
+//           span_element_reduce_fn<T> el_reduce_fn>
+// class span_reducer_base : public reducer_base, public std::span<T> {
+//   public:
+//     using size_type = std::span<T>::size_type;
+
+//     // Export similar constructors as std::span.
+//     // TODO: Export more constructors.
+//     template <class It>
+//     constexpr span_reducer_base(It first, size_type count)
+//         : std::span<T>(first, count) {}
+//     template <class R> constexpr span_reducer_base(R &&r) : std::span<T>(r) {}
+//     constexpr span_reducer_base(const std::span<T> &base)
+//         : std::span<T>(base) {}
+
+//   private:
+//     size_t view_size() const override { return sizeof(span_reducer_base); }
+//     reducer_base *identity(void *v) override {
+//         // Create a new view backed by an array of the right size.
+//         auto *array = new T[this->size()];
+//         auto *res = new (v) span_reducer_base(array, this->size());
+
+//         // Initialize all array elements to the identity value.
+//         for (size_type i = 0; i < this->size(); ++i) {
+//             el_id_fn(array[i]);
+//         }
+//         return res;
+//     }
+//     void reduce(reducer_base *l, reducer_base *r) override {
+//         auto *lv = static_cast<span_reducer_base *>(l);
+//         auto *rv = static_cast<span_reducer_base *>(r);
+
+//         assert(lv->size() == rv->size());
+
+//         size_type count = rv->size();
+//         // Reduce each element of the left and right views.
+//         for (size_type i = 0; i < count; ++i) {
+//             el_reduce_fn((*lv)[i], (*rv)[i]);
+//         }
+//         // Delete the array backing the right view.
+//         delete[] rv->data();
+//     }
+// };
+
+template <typename T, span_element_identity_fn<T> el_id_fn,
+          span_element_reduce_fn<T> el_reduce_fn>
+class span_reducer_base
+    : public cilk::ReducerBase<span_reducer_base<T, el_id_fn, el_reduce_fn>>,
+      public std::span<T> {
+  public:
+    using size_type = std::span<T>::size_type;
+
+    // Export similar constructors as std::span.
+    // TODO: Export more constructors.
+    template <class It>
+    constexpr span_reducer_base(It first, size_type count)
+        : std::span<T>(first, count) {}
+    template <class R> constexpr span_reducer_base(R &&r) : std::span<T>(r) {}
+    constexpr span_reducer_base(const std::span<T> &base)
+        : std::span<T>(base) {}
+
+  public:
+    size_t view_size() const {
+        return next_multiple(sizeof(span_reducer_base) + this->size_bytes(),
+                             sizeof(T));
+    }
+    reducer_base *identity(void *v) {
+        // Create a new view backed by an array of the right size.
+        // auto *array = new T[this->size()];
+        auto *array = reinterpret_cast<T *>(
+            static_cast<std::byte *>(v) +
+            next_multiple(sizeof(span_reducer_base), sizeof(T)));
+        auto *res = new (v) span_reducer_base(array, this->size());
+
+        // Initialize all array elements to the identity value.
+        for (size_type i = 0; i < this->size(); ++i) {
+            el_id_fn(array[i]);
+        }
+        return res;
+    }
+    void reduce(reducer_base *l, reducer_base *r) {
+        auto *lv = static_cast<span_reducer_base *>(l);
+        auto *rv = static_cast<span_reducer_base *>(r);
+
+        assert(lv->size() == rv->size());
+
+        size_type count = rv->size();
+        // Reduce each element of the left and right views.
+        for (size_type i = 0; i < count; ++i) {
+            el_reduce_fn((*lv)[i], (*rv)[i]);
+        }
+        // // Delete the array backing the right view.
+        // delete[] rv->data();
+    }
+};
+
+template <typename T> void el_zero(T &v) { v = 0; }
+template <typename T> void el_plus(T &l, const T &r) { l += r; }
+
+template <typename T, span_element_identity_fn<T> el_id_fn,
+          span_element_reduce_fn<T> el_reduce_fn>
+using span_reducer = span_reducer_base<T, el_id_fn, el_reduce_fn> cilk_reducer;
+
+// A span sum reducer is a span reducer that uses the zero-plus monoid on each
+// element.
+template <typename T>
+using span_sum_reducer =
+    span_reducer_base<T, el_zero<T>, el_plus<T>> cilk_reducer;
+
+// A span holder maintains views that are fixed-size contiguous sequences of
+// objects of type T, where each additional parallel view created is simply
+// discarded when it's no longer needed.  Span holders are useful for maintaing
+// scratch-space buffers for parallel computation.
+// template <typename T, bool initialized = true>
+// class span_holder_base : public reducer_base, public std::span<T> {
+//   public:
+//     using size_type = std::span<T>::size_type;
+
+//     // Export similar constructors as std::span.
+//     // TODO: Export more constructors.
+//     template <class It>
+//     constexpr span_holder_base(It first, size_type count)
+//         : std::span<T>(first, count) {}
+//     template <class R> constexpr span_holder_base(R &&r) : std::span<T>(r) {}
+//     constexpr span_holder_base(const std::span<T> &base)
+//         : std::span<T>(base) {}
+
+//   private:
+//     size_t view_size() const override { return sizeof(span_holder_base); }
+//     reducer_base *identity(void *v) override {
+//         if (initialized) {
+//             // Create a new view backed by an array of the right size.
+//             auto *array = new T[this->size()];
+//             return new (v) span_holder_base(array, this->size());
+//         }
+
+//         auto *array = reinterpret_cast<T *>(std::aligned_alloc(
+//             std::hardware_destructive_interference_size,
+//             next_multiple(sizeof(T) * this->size(),
+//                           std::hardware_destructive_interference_size)));
+//         return new (v) span_holder_base(array, this->size());
+//     }
+//     void reduce(reducer_base *l, reducer_base *r) override {
+//         auto *rv = static_cast<span_holder_base *>(r);
+//         // Delete the array backing the right view.
+//         if (initialized)
+//             delete[] rv->data();
+//         else
+//             std::free(rv->data());
+//     }
+// };
+
+template <typename T, bool initialized = true>
+class span_holder_base
+    : public cilk::ReducerBase<span_holder_base<T, initialized>>,
+      public std::span<T> {
+  public:
+    using size_type = std::span<T>::size_type;
+
+    // Export similar constructors as std::span.
+    // TODO: Export more constructors.
+    template <class It>
+    constexpr span_holder_base(It first, size_type count)
+        : std::span<T>(first, count) {}
+    template <class R> constexpr span_holder_base(R &&r) : std::span<T>(r) {}
+    constexpr span_holder_base(const std::span<T> &base)
+        : std::span<T>(base) {}
+
+  public:
+    size_t view_size() const {
+        return next_multiple(sizeof(span_holder_base) + this->size_bytes(),
+                             sizeof(T));
+    }
+    reducer_base *identity(void *v) {
+        auto *a = static_cast<std::byte *>(v) +
+            next_multiple(sizeof(span_holder_base), sizeof(T));
+        if constexpr (initialized) {
+            for (size_t i = 0; i < this->size(); ++i)
+                new (a + i) T();
+        }
+        // if (initialized) {
+        //     // Create a new view backed by an array of the right size.
+        //     auto *array = new T[this->size()];
+        //     return new (v) span_holder_base(array, this->size());
+        // }
+
+        // auto *array = reinterpret_cast<T *>(std::aligned_alloc(
+        //     std::hardware_destructive_interference_size,
+        //     next_multiple(sizeof(T) * this->size(),
+        //                   std::hardware_destructive_interference_size)));
+        // auto *array = reinterpret_cast<T *>(static_cast<std::byte *>(v) +
+        //     next_multiple(sizeof(span_holder_base), sizeof(T)));
+        auto *array = reinterpret_cast<T *>(a);
+        return new (v) span_holder_base(array, this->size());
+    }
+    void reduce([[maybe_unused]] reducer_base *l, [[maybe_unused]] reducer_base *r) {
+        // auto *rv = static_cast<span_holder_base *>(r);
+        // // Delete the array backing the right view.
+        // if (initialized)
+        //     delete[] rv->data();
+        // else
+        //     std::free(rv->data());
+    }
+};
+
+template <typename T, bool initialized = true>
+using span_holder = span_holder_base<T, initialized> cilk_reducer;
+
+} // namespace cilk
+
+#endif // _SPAN_REDUCER_

@@ -50,20 +50,51 @@ unsigned __cilkrts_get_worker_number(void) {
     return 0;
 }
 
-reducer_base *__cilkrts_reducer_lookup_0(reducer_base *key) {
+// reducer_base *__cilkrts_reducer_lookup_0(reducer_base *key) {
+//     // If we're outside a cilkified region, then the key is the view.
+//     if (__cilkrts_status.need_to_cilkify)
+//         return key;
+//     hyper_table *table = get_hyper_table();
+//     bucket *b = find_hyperobject(table, (uintptr_t)key);
+//     if (__builtin_expect(!!b, true)) {
+//         // Return the reducer_base subobject of the existing view.
+//         // get_if is used instead of get because no exceptions are allowed
+//         return *std::get_if<reducer_base *>(&b->data.extra);
+//     }
+
+//     return __cilkrts_insert_new_view_0(table, key);
+// }
+
+reducer_base *__cilkrts_reducer_lookup_0(reducer_base *key,
+                                         cilk::view_size_fn size_fn,
+                                         cilk::rb_identity_fn ident_fn,
+                                         cilk::rb_reduce_fn red_fn) {
     // If we're outside a cilkified region, then the key is the view.
     if (__cilkrts_status.need_to_cilkify)
         return key;
     hyper_table *table = get_hyper_table();
     bucket *b = find_hyperobject(table, (uintptr_t)key);
     if (__builtin_expect(!!b, true)) {
-        // Return the reducer_base subobject of the existing view.
-        // get_if is used instead of get because no exceptions are allowed
-        return *std::get_if<reducer_base *>(&b->data.extra);
+        return static_cast<reducer_base *>(b->data.view);
     }
 
-    return __cilkrts_insert_new_view_0(table, key);
+    return __cilkrts_insert_new_view_0(table, key, size_fn, ident_fn, red_fn);
 }
+
+// reducer_base *__cilkrts_reducer_lookup_0(reducer_base *key, size_t size,
+//                                          cilk::rb_identity_fn ident_fn,
+//                                          cilk::rb_reduce_fn red_fn) {
+//     // If we're outside a cilkified region, then the key is the view.
+//     if (__cilkrts_status.need_to_cilkify)
+//         return key;
+//     hyper_table *table = get_hyper_table();
+//     bucket *b = find_hyperobject(table, (uintptr_t)key);
+//     if (__builtin_expect(!!b, true)) {
+//         return static_cast<reducer_base *>(b->data.view);
+//     }
+
+//     return __cilkrts_insert_new_view_0(table, key, size, ident_fn, red_fn);
+// }
 
 void *__cilkrts_reducer_lookup_1(void *key,
                                  const reducer_callbacks &callbacks) {

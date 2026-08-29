@@ -4,6 +4,7 @@
 #include "hyperobject_base.h"
 #include "internal-malloc.h"
 #include <cassert>
+#include <variant>
 
 using cilk::reducer_base;
 using cilk::reducer_callbacks;
@@ -53,19 +54,51 @@ hyper_table *__cilkrts_local_hyper_table_alloc(void) {
     return Tmp;
 }
 
-reducer_base *__cilkrts_insert_new_view_0(hyper_table *table,
-                                          reducer_base *key) {
+// reducer_base *__cilkrts_insert_new_view_0(hyper_table *table,
+//                                           reducer_base *key) {
+//     // Create a new view and initialize it with the identity function.
+//     size_t size = key->view_size();
+//     void *new_view = cilk_aligned_alloc(64, round_size_to_alignment(64, size));
+//     reducer_base *base = key->identity(new_view);
+
+//     // Insert the new view into the local hypertable.
+//     [[maybe_unused]] bool success =
+//         table->insert((uintptr_t)key, {new_view, base});
+//     assert(success && "Failed to insert reducer data");
+//     return base;
+// }
+
+reducer_base *__cilkrts_insert_new_view_0(hyper_table *table, reducer_base *key,
+                                          cilk::view_size_fn size_fn,
+                                          cilk::rb_identity_fn ident_fn,
+                                          cilk::rb_reduce_fn red_fn) {
     // Create a new view and initialize it with the identity function.
-    size_t size = key->view_size();
+    size_t size = std::invoke(size_fn, key);
     void *new_view = cilk_aligned_alloc(64, round_size_to_alignment(64, size));
-    reducer_base *base = key->identity(new_view);
+    reducer_base *base = std::invoke(ident_fn, key, new_view);
 
     // Insert the new view into the local hypertable.
     [[maybe_unused]] bool success =
-        table->insert((uintptr_t)key, {new_view, base});
+        table->insert((uintptr_t)key, {new_view, red_fn});
     assert(success && "Failed to insert reducer data");
     return base;
 }
+
+// reducer_base *__cilkrts_insert_new_view_0(hyper_table *table, reducer_base *key,
+//                                           size_t size,
+//                                           cilk::rb_identity_fn ident_fn,
+//                                           cilk::rb_reduce_fn red_fn) {
+//     // Create a new view and initialize it with the identity function.
+//     void *new_view = cilk_aligned_alloc(64, round_size_to_alignment(64, size));
+//     // reducer_base *base = key->identity(new_view);
+//     reducer_base *base = std::invoke(ident_fn, key, new_view);
+
+//     // Insert the new view into the local hypertable.
+//     [[maybe_unused]] bool success =
+//         table->insert((uintptr_t)key, {new_view, red_fn});
+//     assert(success && "Failed to insert reducer data");
+//     return base;
+// }
 
 void *__cilkrts_insert_new_view_1(hyper_table *table, uintptr_t key,
                                   const reducer_callbacks &callbacks) {
@@ -101,22 +134,28 @@ void *__cilkrts_insert_new_view_2(hyper_table *table, uintptr_t key,
 void bucket_reduce(bucket *Left, bucket *Right) {
     assert(Left->data.extra.index() == Right->data.extra.index());
     void *LeftView = Left->data.view, *RightView = Right->data.view;
-    if (std::holds_alternative<reducer_base *>(Left->data.extra)) {
-        reducer_base *Leftmost = static_cast<reducer_base *>(
-            reinterpret_cast<void *>(getAddrFromKey(Left->key)));
-        reducer_base *LeftR = std::get<reducer_base *>(Left->data.extra);
-        reducer_base *RightR = std::get<reducer_base *>(Right->data.extra);
-        Leftmost->reduce(LeftR, RightR);
-        RightR->~reducer_base();
+    if (std::holds_alternative<cilk::rb_reduce_fn>(Left->data.extra)) {
+        std::invoke(std::get<cilk::rb_reduce_fn>(Left->data.extra),
+                    static_cast<reducer_base *>(
+                        reinterpret_cast<void *>(getAddrFromKey(Left->key))),
+                    static_cast<reducer_base *>(LeftView),
+                    static_cast<reducer_base *>(RightView));
+        static_cast<reducer_base *>(RightView)->~reducer_base();
+    // if (std::holds_alternative<reducer_base *>(Left->data.extra)) {
+    //     reducer_base *Leftmost = static_cast<reducer_base *>(
+    //         reinterpret_cast<void *>(getAddrFromKey(Left->key)));
+    //     reducer_base *LeftR = std::get<reducer_base *>(Left->data.extra);
+    //     reducer_base *RightR = std::get<reducer_base *>(Right->data.extra);
+    //     Leftmost->reduce(LeftR, RightR);
+    //     RightR->~reducer_base();
     } else if (std::holds_alternative<const reduce_fn *>(
                    Left->data.extra)) {
-        (*std::get<const reduce_fn *>(Left->data.extra))(LeftView,
-                                                                RightView);
+        (*std::get<const reduce_fn *>(Left->data.extra))(LeftView, RightView);
     } else {
         // fprintf(stderr, "bucket_reduce %p, %p\n", LeftView, RightView);
         std::get<__cilk_c_reduce_fn *>(Left->data.extra)(LeftView, RightView);
     }
-    Right->data.extra = (reducer_base *)nullptr;
+    // Right->data.extra = (reducer_base *)nullptr;
     Right->data.view = nullptr;
     free(RightView);
 }
@@ -175,7 +214,7 @@ hyper_table *merge_two_hts(hyper_table *__restrict Left,
                 //         LeftDst, Src, B.Data.view, Dst, DstB->Data.view);
                 bucket_reduce(&B, DstB);
                 DstB->data = B.data;
-                B.data.extra = (reducer_base *)nullptr;
+                // B.data.extra = (reducer_base *)nullptr;
                 B.data.view = nullptr;
             }
         }

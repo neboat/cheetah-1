@@ -1,5 +1,6 @@
 #include "busyclosure.h"
 #include "cilk-internal.h"
+#include "cilk/reducer"
 #include "cilk2c.h"
 #include "cilk2c_inlined.h"
 #include "closure.h"
@@ -91,9 +92,19 @@ void closure_exception::reduce(reducer_base *l, reducer_base *r) {
 // Get the current view of the exception-reducer state, creating a new view if
 // none exists.
 closure_exception *get_exception_reducer(__cilkrts_worker *w) noexcept {
-    return static_cast<closure_exception *>(
-        internal_reducer_lookup(w, &exception_reducer));
+    return static_cast<closure_exception *>(internal_reducer_lookup(
+        w, static_cast<cilk::reducer_base *>(&exception_reducer),
+        static_cast<cilk::view_size_fn>(&closure_exception::view_size),
+        static_cast<cilk::rb_identity_fn>(&closure_exception::identity),
+        static_cast<cilk::rb_reduce_fn>(&closure_exception::reduce)));
 }
+// closure_exception *get_exception_reducer(__cilkrts_worker *w) noexcept {
+//     return static_cast<closure_exception *>(internal_reducer_lookup(
+//         w, static_cast<cilk::reducer_base *>(&exception_reducer),
+//         sizeof(closure_exception),
+//         static_cast<cilk::rb_identity_fn>(&closure_exception::identity),
+//         static_cast<cilk::rb_reduce_fn>(&closure_exception::reduce)));
+// }
 
 // Try to get the current view of the exception-reducer state, but return NULL
 // if no view exists.
@@ -107,7 +118,8 @@ closure_exception *get_exception_reducer_or_null(__cilkrts_worker *w) noexcept {
     if (b) {
         CILK_ASSERT_POINTER_EQUAL(key, (void *)getAddrFromKey(b->key));
         // Return the existing view.
-        reducer_base *base = std::get<reducer_base *>(b->data.extra);
+        // reducer_base *base = std::get<reducer_base *>(b->data.extra);
+        reducer_base *base = static_cast<reducer_base *>(b->data.view);
         return static_cast<closure_exception *>(base);
     }
     // No view was found.  Don't create a new reducer view; just return NULL.
@@ -229,7 +241,8 @@ extern "C" _Unwind_Reason_Code __cilk_personality_internal(
         // don't do anything out of the ordinary during search phase.
         return std_lib_personality(version, actions, exception_class, ue_header,
                                    context);
-    } else if (actions & _UA_CLEANUP_PHASE) {
+    }
+    if (actions & _UA_CLEANUP_PHASE) {
         cilkrts_alert(EXCEPT, "cilk_personality called %p  CFA %p\n",
                       (void *)sf, (void *)get_cfa(context));
 
@@ -324,9 +337,8 @@ extern "C" _Unwind_Reason_Code __cilk_personality_internal(
         }
 
         return cleanup_res;
-    } else {
-        return _URC_FATAL_PHASE1_ERROR;
     }
+    return _URC_FATAL_PHASE1_ERROR;
 }
 
 extern "C" {

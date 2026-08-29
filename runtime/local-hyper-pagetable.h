@@ -2,6 +2,7 @@
 #define _LOCAL_HYPER_PAGETABLE_H
 
 #include "cilk/cilk_api.h"
+#include "cilk/reducer"
 #include "hyperobject_base.h"
 #include "rts-config.h"
 #include <cassert>
@@ -10,6 +11,11 @@
 #include <sys/mman.h>
 #include <type_traits>
 #include <variant>
+
+using cilk::reducer_base;
+using cilk::reducer_callbacks;
+using cilk::reducer_data;
+using cilk::reduce_fn;
 
 template <typename V> struct EntryTy {
     uintptr_t key = 0;
@@ -643,14 +649,28 @@ static inline bool insert_hyperobject(hyper_table *table, uintptr_t key,
 CHEETAH_API
 bucket *__cilkrts_find_hyperobject_hash(hyper_table *table, uintptr_t key);
 
+// CHEETAH_API
+// reducer_base *__cilkrts_insert_new_view_0(hyper_table *table,
+//                                           reducer_base *key)
+//     __attribute__((nonnull, returns_nonnull));
+
 CHEETAH_API
-__reducer_base *__cilkrts_insert_new_view_0(hyper_table *table,
-                                            struct __reducer_base *key)
+reducer_base *__cilkrts_insert_new_view_0(hyper_table *table, reducer_base *key,
+                                          cilk::view_size_fn size_fn,
+                                          cilk::rb_identity_fn ident_fn,
+                                          cilk::rb_reduce_fn red_fn)
     __attribute__((nonnull, returns_nonnull));
+
+// CHEETAH_API
+// reducer_base *__cilkrts_insert_new_view_0(hyper_table *table, reducer_base *key,
+//                                           size_t size,
+//                                           cilk::rb_identity_fn ident_fn,
+//                                           cilk::rb_reduce_fn red_fn)
+//     __attribute__((nonnull, returns_nonnull));
 
 CHEETAH_API
 void *__cilkrts_insert_new_view_1(hyper_table *table, uintptr_t key,
-                                  const __reducer_callbacks &callbacks)
+                                  const reducer_callbacks &callbacks)
     __attribute__((nonnull, returns_nonnull));
 
 CHEETAH_API

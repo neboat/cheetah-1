@@ -2,6 +2,7 @@
 // All of these use C linkage.
 
 #include "cilk/cilk_api.h"
+#include "cilk/reducer"
 #include "rts-config.h"
 #include <cstdint>
 
@@ -14,6 +15,7 @@ struct reducer_callbacks;
 
 using cilk::reducer_base;
 using cilk::reducer_callbacks;
+using cilk::rb_reduce_fn;
 
 #ifdef __cplusplus
 extern "C" {
@@ -88,8 +90,16 @@ void __cilk_sync(__cilkrts_stack_frame *sf);
 // exception that needs to be handled locally.
 void __cilk_sync_nothrow(__cilkrts_stack_frame *sf);
 
-reducer_base *__cilkrts_reducer_lookup_0(reducer_base *key)
+reducer_base *__cilkrts_reducer_lookup_0(cilk::reducer_base *key,
+                                         cilk::view_size_fn size_fn,
+                                         cilk::rb_identity_fn ident_fn,
+                                         cilk::rb_reduce_fn red_fn)
     __attribute__((nonnull, returns_nonnull));
+// reducer_base *__cilkrts_reducer_lookup_0(cilk::reducer_base *key,
+//                                          size_t size,
+//                                          cilk::rb_identity_fn ident_fn,
+//                                          cilk::rb_reduce_fn red_fn)
+//     __attribute__((nonnull, returns_nonnull));
 void *__cilkrts_reducer_lookup_1(void *key, const reducer_callbacks &)
     __attribute__((nonnull, returns_nonnull));
 void *__cilkrts_reducer_lookup_2(void *key, size_t size,
@@ -97,7 +107,9 @@ void *__cilkrts_reducer_lookup_2(void *key, size_t size,
                                  __cilk_c_reduce_fn *reduce)
     __attribute__((nonnull, returns_nonnull));
 
-void __cilkrts_reducer_register_0(reducer_base *key) __CILKRTS_NOTHROW;
+// void __cilkrts_reducer_register_0(reducer_base *key) __CILKRTS_NOTHROW;
+void __cilkrts_reducer_register_0(reducer_base *key,
+                                  rb_reduce_fn reduce) __CILKRTS_NOTHROW;
 void __cilkrts_reducer_register_1(void *key,
                                   reducer_callbacks *) __CILKRTS_NOTHROW;
 void __cilkrts_reducer_register_2(void *key,

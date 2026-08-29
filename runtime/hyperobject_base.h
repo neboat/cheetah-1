@@ -26,7 +26,8 @@ namespace cilk {
 struct reducer_data {
     void *view = nullptr;
     std::variant<
-        reducer_base *,
+        // reducer_base *,
+        cilk::rb_reduce_fn,
         const reduce_fn *,
         __cilk_c_reduce_fn *
         > extra;
